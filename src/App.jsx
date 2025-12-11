@@ -75,7 +75,7 @@ export default function App() {
   return (
     <Layout className="min-h-screen">
       {/* Sidebar */}
-      <Sider breakpoint="lg" collapsedWidth="0">
+      <Sider breakpoint="lg" collapsedWidth={0} width={220}>
         <div className="text-white text-lg font-semibold px-4 py-3">
           Renovation
         </div>

@@ -5,4 +5,29 @@
 /* Optional: nicer body background */
 body {
   @apply bg-gray-50;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+html, body, #root {
+  width: 100%;
+  height: 100%;
+}
+
+.ant-layout {
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Ensure content doesn't force horizontal scroll on small screens */
+.max-w-7xl {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+@media (max-width: 768px) {
+  .ant-layout-sider {
+    z-index: 1000;
+  }
 }

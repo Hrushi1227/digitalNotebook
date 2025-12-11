@@ -8,7 +8,7 @@ import {
   Select,
   Table,
 } from "antd";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import dayjs from "dayjs";
@@ -24,6 +24,10 @@ import { addItem, deleteItem } from "../firebaseService";
 
 export default function Payments() {
   const payments = useSelector(selectPayments);
+  const paymentsUnique = useMemo(() => {
+    // keep last occurrence for each id
+    return Array.from(new Map(payments.map((p) => [p.id, p])).values());
+  }, [payments]);
   const workers = useSelector(selectWorkers);
   const dispatch = useDispatch();
 
@@ -68,7 +72,7 @@ export default function Payments() {
 
       <Table
         rowKey="id"
-        dataSource={payments}
+        dataSource={paymentsUnique}
         columns={columns}
         className="bg-white p-2 rounded-lg shadow"
       />
