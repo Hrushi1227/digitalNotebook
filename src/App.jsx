@@ -95,6 +95,15 @@ export default function App() {
           mode="inline"
           selectedKeys={[location.pathname]}
           items={items}
+          onClick={() => {
+            try {
+              if (typeof window !== "undefined" && window.innerWidth < 992) {
+                setCollapsed(true);
+              }
+            } catch (e) {
+              // ignore
+            }
+          }}
         />
       </Sider>
 
