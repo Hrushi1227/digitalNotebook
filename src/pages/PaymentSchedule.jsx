@@ -4,55 +4,143 @@ import {
   Form,
   InputNumber,
   Modal,
+  Popconfirm,
   Select,
   Table,
+  Tag,
 } from "antd";
+import { useState } from "react";
+import { useSelector } from "react-redux";
+
 import dayjs from "dayjs";
-import { useDispatch, useSelector } from "react-redux";
-import { addSchedule, selectSchedules } from "../store/schedulesSlice";
+
+import { selectSchedules } from "../store/schedulesSlice";
 import { selectWorkers } from "../store/workersSlice";
+
+import { addItem, deleteItem, updateItem } from "../firebaseService";
 
 export default function PaymentSchedule() {
   const schedules = useSelector(selectSchedules);
   const workers = useSelector(selectWorkers);
-  const dispatch = useDispatch();
+
   const [open, setOpen] = useState(false);
+  const [edit, setEdit] = useState(null);
 
   const columns = [
     {
       title: "Worker",
       dataIndex: "workerId",
-      render: (id) => workers.find((w) => w.id === id)?.name,
+      render: (id) => workers.find((w) => w.id === id)?.name || "-",
     },
-    { title: "Phase", dataIndex: "phase" },
+    {
+      title: "Phase",
+      dataIndex: "phase",
+      render: (p) => <b>{p}</b>,
+    },
+    { title: "Amount", dataIndex: "amount", render: (v) => `₹${v}` },
     { title: "Due Date", dataIndex: "dueDate" },
-    { title: "Amount", dataIndex: "amount" },
-    { title: "Status", dataIndex: "status" },
+    {
+      title: "Status",
+      dataIndex: "status",
+      render: (s) =>
+        s === "pending" ? (
+          <Tag color="orange">Pending</Tag>
+        ) : (
+          <Tag color="green">Paid</Tag>
+        ),
+    },
+    {
+      title: "Actions",
+      render: (_, r) => (
+        <div className="flex gap-2">
+          <Button
+            size="small"
+            onClick={() => {
+              setEdit(r);
+              setOpen(true);
+            }}
+          >
+            Edit
+          </Button>
+
+          <Popconfirm
+            title="Delete schedule?"
+            onConfirm={() => deleteItem("schedules", r.id)}
+          >
+            <Button size="small" danger>
+              Delete
+            </Button>
+          </Popconfirm>
+
+          {r.status === "pending" && (
+            <Button
+              size="small"
+              type="primary"
+              onClick={() =>
+                updateItem("schedules", r.id, { ...r, status: "paid" })
+              }
+            >
+              Mark Paid
+            </Button>
+          )}
+        </div>
+      ),
+    },
   ];
 
   return (
-    <>
-      <Button type="primary" onClick={() => setOpen(true)}>
-        Add Schedule
-      </Button>
+    <div className="p-2">
+      <div className="flex justify-between mb-4">
+        <h1 className="text-xl font-semibold">Payment Schedule</h1>
 
-      <Table rowKey="id" dataSource={schedules} columns={columns} />
+        <Button
+          type="primary"
+          onClick={() => {
+            setEdit(null);
+            setOpen(true);
+          }}
+        >
+          Add Schedule
+        </Button>
+      </div>
+
+      <Table
+        rowKey="id"
+        dataSource={schedules}
+        columns={columns}
+        className="bg-white p-2 rounded-lg shadow"
+      />
 
       <Modal
         open={open}
+        title={edit ? "Edit Schedule" : "Add Schedule"}
         onCancel={() => setOpen(false)}
-        onOk={() => document.getElementById("sched-submit").click()}
+        onOk={() => document.getElementById("scheduleSubmitBtn").click()}
       >
         <Form
           layout="vertical"
-          onFinish={(vals) => {
-            dispatch(
-              addSchedule({
-                ...vals,
-                dueDate: vals.dueDate.format("YYYY-MM-DD"),
-              })
-            );
+          initialValues={
+            edit
+              ? { ...edit, dueDate: dayjs(edit.dueDate) }
+              : { dueDate: dayjs() }
+          }
+          onFinish={async (vals) => {
+            const payload = {
+              workerId: vals.workerId,
+              phase: vals.phase,
+              amount: vals.amount || 0,
+              status: edit?.status || "pending",
+              dueDate: vals.dueDate.format("YYYY-MM-DD"),
+            };
+
+            if (edit) {
+              await updateItem("schedules", edit.id, payload);
+            } else {
+              await addItem("schedules", payload);
+            }
+
             setOpen(false);
+            setEdit(null);
           }}
         >
           <Form.Item
@@ -61,7 +149,10 @@ export default function PaymentSchedule() {
             rules={[{ required: true }]}
           >
             <Select
-              options={workers.map((w) => ({ value: w.id, label: w.name }))}
+              options={workers.map((w) => ({
+                label: w.name,
+                value: w.id,
+              }))}
             />
           </Form.Item>
 
@@ -76,16 +167,24 @@ export default function PaymentSchedule() {
           </Form.Item>
 
           <Form.Item name="amount" label="Amount">
-            <InputNumber className="w-full" />
+            <InputNumber className="w-full" min={0} />
           </Form.Item>
 
-          <Form.Item name="dueDate" label="Due Date">
-            <DatePicker className="w-full" defaultValue={dayjs()} />
+          <Form.Item
+            name="dueDate"
+            label="Due Date"
+            rules={[{ required: true }]}
+          >
+            <DatePicker className="w-full" />
           </Form.Item>
 
-          <button id="sched-submit" type="submit" className="hidden"></button>
+          <button
+            id="scheduleSubmitBtn"
+            type="submit"
+            className="hidden"
+          ></button>
         </Form>
       </Modal>
-    </>
+    </div>
   );
 }

@@ -1,103 +1,166 @@
 import {
   Button,
+  Card,
+  Col,
   DatePicker,
   Form,
+  Input,
   InputNumber,
   Modal,
-  Select,
+  Popconfirm,
+  Row,
+  Statistic,
   Table,
+  Tag,
 } from "antd";
-import dayjs from "dayjs";
 import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 
-import { addSchedule, selectSchedules } from "../store/schedulesSlice";
-import { selectWorkers } from "../store/workersSlice";
+import dayjs from "dayjs";
 
-export default function PaymentSchedule() {
-  const schedules = useSelector(selectSchedules);
-  const workers = useSelector(selectWorkers);
-  const dispatch = useDispatch();
+import { addItem, deleteItem } from "../firebaseService";
+import { selectLedger } from "../store/ledgerSlice";
 
+export default function Ledger() {
+  const ledger = useSelector(selectLedger);
   const [open, setOpen] = useState(false);
+
+  // ---- Calculations ----
+  const totalDebit = ledger
+    .filter((l) => l.type === "debit")
+    .reduce((a, b) => a + Number(b.amount), 0);
+
+  const totalCredit = ledger
+    .filter((l) => l.type === "credit")
+    .reduce((a, b) => a + Number(b.amount), 0);
+
+  const net = totalCredit - totalDebit;
 
   const columns = [
     {
-      title: "Worker",
-      dataIndex: "workerId",
-      render: (id) => workers.find((w) => w.id === id)?.name || "-",
+      title: "Type",
+      dataIndex: "type",
+      render: (t) =>
+        t === "debit" ? (
+          <Tag color="red">Debit</Tag>
+        ) : (
+          <Tag color="green">Credit</Tag>
+        ),
     },
-    { title: "Phase", dataIndex: "phase" },
-    { title: "Due Date", dataIndex: "dueDate" },
-    { title: "Amount", dataIndex: "amount" },
-    { title: "Status", dataIndex: "status" },
+    {
+      title: "Amount",
+      dataIndex: "amount",
+      render: (v) => `₹${v}`,
+    },
+    { title: "Date", dataIndex: "date" },
+    { title: "Note", dataIndex: "note" },
+
+    {
+      title: "Action",
+      render: (_, r) => (
+        <Popconfirm
+          title="Delete entry?"
+          onConfirm={() => deleteItem("ledger", r.id)}
+        >
+          <Button danger size="small">
+            Delete
+          </Button>
+        </Popconfirm>
+      ),
+    },
   ];
 
   return (
-    <div>
+    <div className="p-2">
       <div className="flex justify-between mb-4">
-        <h1 className="text-xl font-semibold">Payment Schedule</h1>
+        <h1 className="text-xl font-semibold">Ledger</h1>
         <Button type="primary" onClick={() => setOpen(true)}>
-          Add Schedule
+          Add Entry
         </Button>
       </div>
 
-      <Table rowKey="id" dataSource={schedules} columns={columns} />
+      {/* Summary Cards */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic
+              title="Total Debit"
+              value={totalDebit}
+              prefix="₹"
+              valueStyle={{ color: "red" }}
+            />
+          </Card>
+        </Col>
 
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic
+              title="Total Credit"
+              value={totalCredit}
+              prefix="₹"
+              valueStyle={{ color: "green" }}
+            />
+          </Card>
+        </Col>
+
+        <Col xs={24} md={8}>
+          <Card>
+            <Statistic
+              title="Net Balance"
+              value={net}
+              prefix="₹"
+              valueStyle={{ color: net < 0 ? "red" : "green" }}
+            />
+          </Card>
+        </Col>
+      </Row>
+
+      {/* Ledger table */}
+      <Card className="mt-6">
+        <Table rowKey="id" dataSource={ledger} columns={columns} />
+      </Card>
+
+      {/* Add Entry Modal */}
       <Modal
         open={open}
-        title="Add Payment Schedule"
+        title="Add Ledger Entry"
         onCancel={() => setOpen(false)}
-        onOk={() => document.getElementById("scheduleSubmit").click()}
+        onOk={() => document.getElementById("ledgerSubmit").click()}
       >
         <Form
           layout="vertical"
-          onFinish={(vals) => {
-            dispatch(
-              addSchedule({
-                ...vals,
-                dueDate: vals.dueDate.format("YYYY-MM-DD"),
-              })
-            );
+          onFinish={async (vals) => {
+            await addItem("ledger", {
+              type: vals.type,
+              amount: vals.amount,
+              note: vals.note || "",
+              date: vals.date.format("YYYY-MM-DD"),
+            });
+
             setOpen(false);
           }}
         >
-          <Form.Item
-            name="workerId"
-            label="Worker"
-            rules={[{ required: true }]}
-          >
-            <Select
-              options={workers.map((w) => ({
-                label: w.name,
-                value: w.id,
-              }))}
-            />
+          <Form.Item name="type" label="Type" rules={[{ required: true }]}>
+            <select className="w-full border p-2 rounded">
+              <option value="">Select type</option>
+              <option value="credit">Credit</option>
+              <option value="debit">Debit</option>
+            </select>
           </Form.Item>
 
-          <Form.Item name="phase" label="Phase" rules={[{ required: true }]}>
-            <Select
-              options={[
-                { label: "Advance", value: "Advance" },
-                { label: "Mid", value: "Mid" },
-                { label: "Completion", value: "Completion" },
-              ]}
-            />
-          </Form.Item>
-
-          <Form.Item name="amount" label="Amount">
+          <Form.Item name="amount" label="Amount" rules={[{ required: true }]}>
             <InputNumber className="w-full" min={0} />
           </Form.Item>
 
-          <Form.Item
-            name="dueDate"
-            label="Due Date"
-            rules={[{ required: true }]}
-          >
+          <Form.Item name="note" label="Note">
+            <Input />
+          </Form.Item>
+
+          <Form.Item name="date" label="Date" rules={[{ required: true }]}>
             <DatePicker className="w-full" defaultValue={dayjs()} />
           </Form.Item>
 
-          <button id="scheduleSubmit" type="submit" className="hidden" />
+          <button id="ledgerSubmit" type="submit" className="hidden" />
         </Form>
       </Modal>
     </div>

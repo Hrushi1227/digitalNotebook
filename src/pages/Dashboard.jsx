@@ -1,58 +1,157 @@
-import { Card, Col, Row, Table } from "antd";
+import { Card, Col, Row, Statistic, Table, Tag } from "antd";
 import { useSelector } from "react-redux";
+
+import { selectBudgets } from "../store/budgetsSlice";
+import { selectInvoices } from "../store/invoicesSlice";
+import { selectLedger } from "../store/ledgerSlice";
 import { selectMaterials } from "../store/materialsSlice";
 import { selectPayments } from "../store/paymentsSlice";
-import { selectTasks } from "../store/tasksSlice";
-import { selectWorkerTotals, selectWorkers } from "../store/workersSlice";
+import { selectSchedules } from "../store/schedulesSlice";
+import { selectWorkers } from "../store/workersSlice";
 
 export default function Dashboard() {
-  const workers = useSelector(selectWorkers);
   const materials = useSelector(selectMaterials);
   const payments = useSelector(selectPayments);
-  const tasks = useSelector(selectTasks);
-  const totals = useSelector(selectWorkerTotals);
+  const budgets = useSelector(selectBudgets);
+  const schedules = useSelector(selectSchedules);
+  const invoices = useSelector(selectInvoices);
+  const ledger = useSelector(selectLedger);
+  const workers = useSelector(selectWorkers);
 
-  const matSpend = materials.reduce((a, m) => a + Number(m.price || 0), 0);
-  const taskSpend = tasks.reduce((a, t) => a + Number(t.cost || 0), 0);
-  const paid = payments.reduce((a, p) => a + Number(p.amount || 0), 0);
+  // ------------------- CALCULATIONS -------------------
 
-  const summary = [
-    { title: "Total Worker Budget", value: totals.budget },
-    { title: "Total Paid (All)", value: paid },
-    { title: "Pending to Workers", value: totals.pending },
-    { title: "Materials Spend", value: matSpend },
-    { title: "Task Cost (sum)", value: taskSpend },
-    { title: "Workers", value: workers.length },
-    { title: "Tasks", value: tasks.length },
-    { title: "Materials", value: materials.length },
+  // Total material cost
+  const materialSpend = materials.reduce((a, b) => a + Number(b.price || 0), 0);
+
+  // Total payments to workers
+  const paymentSpend = payments.reduce((a, b) => a + Number(b.amount || 0), 0);
+
+  // Invoices total
+  const invoiceSpend = invoices.reduce((a, b) => a + Number(b.amount || 0), 0);
+
+  // Total ledger debit/credit
+  const totalDebit = ledger
+    .filter((l) => l.type === "debit")
+    .reduce((a, b) => a + Number(b.amount), 0);
+
+  const totalCredit = ledger
+    .filter((l) => l.type === "credit")
+    .reduce((a, b) => a + Number(b.amount), 0);
+
+  // Net balance
+  const netBalance = totalCredit - totalDebit;
+
+  // Upcoming schedules (next 7 days)
+  const upcoming = schedules
+    .filter((s) => s.status === "pending")
+    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+  // ------------------- TABLE COLUMNS -------------------
+  const scheduleColumns = [
+    {
+      title: "Worker",
+      dataIndex: "workerId",
+      render: (id) => workers.find((w) => w.id === id)?.name || "-",
+    },
+    { title: "Phase", dataIndex: "phase" },
+    { title: "Amount", dataIndex: "amount" },
+    {
+      title: "Due Date",
+      dataIndex: "dueDate",
+      render: (d) => <b>{d}</b>,
+    },
+    {
+      title: "Status",
+      dataIndex: "status",
+      render: (s) =>
+        s === "pending" ? (
+          <Tag color="orange">Pending</Tag>
+        ) : (
+          <Tag color="green">Paid</Tag>
+        ),
+    },
   ];
 
-  const recentPayments = [...payments].slice(-5).reverse();
-
   return (
-    <div className="space-y-4">
+    <div className="p-2">
+      <h1 className="text-2xl font-semibold mb-4">Dashboard</h1>
+
+      {/* TOP STATS */}
       <Row gutter={[16, 16]}>
-        {summary.map((s, i) => (
-          <Col xs={24} sm={12} md={8} lg={6} key={i}>
-            <Card className="shadow" title={s.title}>
-              ₹ {s.value}
-            </Card>
-          </Col>
-        ))}
+        <Col xs={24} md={6}>
+          <Card>
+            <Statistic
+              title="Material Spend"
+              value={materialSpend}
+              prefix="₹"
+            />
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card>
+            <Statistic
+              title="Worker Payments"
+              value={paymentSpend}
+              prefix="₹"
+            />
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card>
+            <Statistic title="Invoices Total" value={invoiceSpend} prefix="₹" />
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card>
+            <Statistic
+              title="Net Balance"
+              value={netBalance}
+              prefix="₹"
+              valueStyle={{ color: netBalance < 0 ? "red" : "green" }}
+            />
+          </Card>
+        </Col>
       </Row>
 
-      <Card className="shadow" title="Recent Payments">
+      {/* BUDGET SUMMARY */}
+      <h2 className="text-xl font-semibold mt-10 mb-4">Budget Summary</h2>
+      <Row gutter={[16, 16]}>
+        {budgets.map((b) => {
+          // Calculate spend for that category
+          const categorySpend = materials
+            .filter((m) => m.category === b.key)
+            .reduce((a, v) => a + Number(v.price || 0), 0);
+
+          const overBudget = categorySpend > Number(b.allocated);
+
+          return (
+            <Col xs={24} md={6} key={b.id}>
+              <Card>
+                <Statistic
+                  title={b.key}
+                  value={categorySpend}
+                  prefix="₹"
+                  suffix={`/ ${b.allocated}`}
+                  valueStyle={{ color: overBudget ? "red" : "green" }}
+                />
+              </Card>
+            </Col>
+          );
+        })}
+      </Row>
+
+      {/* UPCOMING SCHEDULES */}
+      <h2 className="text-xl font-semibold mt-10 mb-4">Upcoming Payments</h2>
+
+      <Card>
         <Table
-          rowKey={(r, idx) => idx}
-          size="small"
+          rowKey="id"
+          dataSource={upcoming}
+          columns={scheduleColumns}
           pagination={false}
-          dataSource={recentPayments}
-          columns={[
-            { title: "Date", dataIndex: "date" },
-            { title: "Worker", dataIndex: "workerId" },
-            { title: "Amount", dataIndex: "amount" },
-            { title: "Method", dataIndex: "method" },
-          ]}
         />
       </Card>
     </div>

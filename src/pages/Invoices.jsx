@@ -10,28 +10,27 @@ import {
   Table,
   Upload,
 } from "antd";
-import dayjs from "dayjs";
 import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  addInvoice,
-  deleteInvoice,
-  selectInvoices,
-} from "../store/invoicesSlice";
+import { useSelector } from "react-redux";
 
-function toBase64(file) {
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.readAsDataURL(file);
-  });
-}
+import dayjs from "dayjs";
+
+import { addItem, deleteItem } from "../firebaseService";
+import { selectInvoices } from "../store/invoicesSlice";
 
 export default function Invoices() {
   const invoices = useSelector(selectInvoices);
-  const dispatch = useDispatch();
+
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState(null);
+
+  // Convert image to Base64
+  const toBase64 = (file) =>
+    new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.readAsDataURL(file);
+    });
 
   const columns = [
     { title: "Vendor", dataIndex: "vendor" },
@@ -41,44 +40,53 @@ export default function Invoices() {
       title: "Action",
       render: (_, r) => (
         <Popconfirm
-          title="Delete?"
-          onConfirm={() => dispatch(deleteInvoice(r.id))}
+          title="Delete invoice?"
+          onConfirm={() => deleteItem("invoices", r.id)}
         >
-          <Button danger>Delete</Button>
+          <Button danger size="small">
+            Delete
+          </Button>
         </Popconfirm>
       ),
     },
   ];
 
   return (
-    <>
+    <div className="p-2">
       <div className="flex justify-between mb-4">
-        <h2 className="text-xl font-semibold">Invoices</h2>
+        <h1 className="text-xl font-semibold">Invoices</h1>
         <Button type="primary" onClick={() => setOpen(true)}>
           Upload Invoice
         </Button>
       </div>
 
-      <Table rowKey="id" dataSource={invoices} columns={columns} />
+      <Table
+        rowKey="id"
+        dataSource={invoices}
+        columns={columns}
+        className="bg-white p-2 rounded-lg shadow"
+      />
 
       <Modal
         open={open}
+        title="Add Invoice"
         onCancel={() => setOpen(false)}
-        onOk={() => document.getElementById("invoice-submit").click()}
-        title="Upload Invoice"
+        onOk={() => document.getElementById("invoiceSubmitBtn").click()}
       >
         <Form
           layout="vertical"
           onFinish={async (vals) => {
-            let img = file ? await toBase64(file) : "";
-            dispatch(
-              addInvoice({
-                ...vals,
-                date: vals.date.format("YYYY-MM-DD"),
-                image: img,
-              })
-            );
+            const img = file ? await toBase64(file) : "";
+
+            await addItem("invoices", {
+              vendor: vals.vendor,
+              amount: vals.amount,
+              date: vals.date.format("YYYY-MM-DD"),
+              image: img, // stored as Base64
+            });
+
             setOpen(false);
+            setFile(null);
           }}
         >
           <Form.Item name="vendor" label="Vendor" rules={[{ required: true }]}>
@@ -86,20 +94,29 @@ export default function Invoices() {
           </Form.Item>
 
           <Form.Item name="amount" label="Amount" rules={[{ required: true }]}>
-            <InputNumber className="w-full" />
+            <InputNumber className="w-full" min={0} />
           </Form.Item>
 
           <Form.Item name="date" label="Date" rules={[{ required: true }]}>
             <DatePicker className="w-full" defaultValue={dayjs()} />
           </Form.Item>
 
-          <Upload beforeUpload={(f) => (setFile(f), false)}>
-            <Button icon={<UploadOutlined />}>Choose Invoice Image</Button>
+          <Upload
+            beforeUpload={(f) => {
+              setFile(f);
+              return false;
+            }}
+          >
+            <Button icon={<UploadOutlined />}>Upload Image</Button>
           </Upload>
 
-          <button id="invoice-submit" type="submit" className="hidden"></button>
+          <button
+            id="invoiceSubmitBtn"
+            type="submit"
+            className="hidden"
+          ></button>
         </Form>
       </Modal>
-    </>
+    </div>
   );
 }

@@ -1,29 +1,27 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { nanoid } from "nanoid";
 
-const initialState = { list: [] };
-
 const invoicesSlice = createSlice({
   name: "invoices",
-  initialState,
+  initialState: [],
   reducers: {
+    setAll(state, action) {
+      return action.payload;
+    },
     addInvoice: {
-      reducer(state, { payload }) {
-        state.list.push(payload);
+      reducer(state, action) {
+        state.push(action.payload);
       },
       prepare(data) {
-        return {
-          payload: { id: nanoid(), ...data },
-        };
+        return { payload: { id: nanoid(), ...data } };
       },
     },
-    deleteInvoice(state, { payload }) {
-      state.list = state.list.filter((i) => i.id !== payload);
+    deleteInvoice(state, action) {
+      return state.filter((i) => i.id !== action.payload);
     },
   },
 });
 
-export const { addInvoice, deleteInvoice } = invoicesSlice.actions;
+export const { setAll, addInvoice, deleteInvoice } = invoicesSlice.actions;
+export const selectInvoices = (s) => s.invoices;
 export default invoicesSlice.reducer;
-
-export const selectInvoices = (s) => s.invoices.list;

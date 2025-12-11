@@ -6,24 +6,22 @@ import {
   Modal,
   Popconfirm,
   Select,
-  Space,
   Table,
 } from "antd";
-import dayjs from "dayjs";
 import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import PageHeader from "../components/common/PageHeader";
-import {
-  addPayment,
-  deletePayment,
-  selectPayments,
-} from "../store/paymentsSlice";
-import { applyPaymentToWorker, selectWorkers } from "../store/workersSlice";
+import { useSelector } from "react-redux";
+
+import dayjs from "dayjs";
+
+import { selectPayments } from "../store/paymentsSlice";
+import { selectWorkers } from "../store/workersSlice";
+
+import { addItem, deleteItem } from "../firebaseService";
 
 export default function Payments() {
   const payments = useSelector(selectPayments);
   const workers = useSelector(selectWorkers);
-  const dispatch = useDispatch();
+
   const [open, setOpen] = useState(false);
 
   const columns = [
@@ -32,63 +30,57 @@ export default function Payments() {
       dataIndex: "workerId",
       render: (id) => workers.find((w) => w.id === id)?.name || "-",
     },
-    { title: "Amount", dataIndex: "amount" },
+    { title: "Amount", dataIndex: "amount", render: (v) => `₹${v}` },
     { title: "Date", dataIndex: "date" },
-    { title: "Method", dataIndex: "method" },
-    { title: "Phase", dataIndex: "phase" },
+    { title: "Note", dataIndex: "note" },
     {
       title: "Action",
       render: (_, r) => (
-        <Space>
-          <Popconfirm
-            title="Delete payment?"
-            onConfirm={() => dispatch(deletePayment(r.id))}
-          >
-            <Button danger>Delete</Button>
-          </Popconfirm>
-        </Space>
+        <Popconfirm
+          title="Delete payment?"
+          onConfirm={() => deleteItem("payments", r.id)}
+        >
+          <Button danger size="small">
+            Delete
+          </Button>
+        </Popconfirm>
       ),
     },
   ];
 
-  const total = payments.reduce((a, p) => a + Number(p.amount || 0), 0);
-
   return (
-    <div>
-      <PageHeader
-        title="Payments"
-        extra={
-          <div className="flex items-center gap-3">
-            <div className="text-gray-600">
-              Total Paid: <b>₹ {total}</b>
-            </div>
-            <Button type="primary" onClick={() => setOpen(true)}>
-              Add Payment
-            </Button>
-          </div>
-        }
-      />
-      <div className="bg-white rounded-xl p-4 shadow">
-        <Table rowKey="id" columns={columns} dataSource={payments} />
+    <div className="p-2">
+      <div className="flex justify-between mb-4">
+        <h1 className="text-xl font-semibold">Payments</h1>
+
+        <Button type="primary" onClick={() => setOpen(true)}>
+          Add Payment
+        </Button>
       </div>
+
+      <Table
+        rowKey="id"
+        dataSource={payments}
+        columns={columns}
+        className="bg-white p-2 rounded-lg shadow"
+      />
 
       <Modal
         open={open}
         title="Add Payment"
         onCancel={() => setOpen(false)}
-        onOk={() => document.getElementById("paySubmitAll").click()}
+        onOk={() => document.getElementById("paySubmitBtn").click()}
       >
         <Form
           layout="vertical"
-          onFinish={(vals) => {
-            const payload = { ...vals, date: vals.date.format("YYYY-MM-DD") };
-            dispatch(addPayment(payload));
-            dispatch(
-              applyPaymentToWorker({
-                workerId: vals.workerId,
-                amount: vals.amount,
-              })
-            );
+          onFinish={async (vals) => {
+            await addItem("payments", {
+              workerId: vals.workerId,
+              amount: vals.amount,
+              note: vals.note || "",
+              date: vals.date.format("YYYY-MM-DD"),
+            });
+
             setOpen(false);
           }}
         >
@@ -98,30 +90,29 @@ export default function Payments() {
             rules={[{ required: true }]}
           >
             <Select
-              options={workers.map((w) => ({ value: w.id, label: w.name }))}
+              options={workers.map((w) => ({
+                label: w.name,
+                value: w.id,
+              }))}
             />
           </Form.Item>
+
           <Form.Item name="amount" label="Amount" rules={[{ required: true }]}>
             <InputNumber className="w-full" min={0} />
           </Form.Item>
+
+          <Form.Item name="note" label="Note">
+            <input
+              className="border rounded p-2 w-full"
+              placeholder="Optional note"
+            />
+          </Form.Item>
+
           <Form.Item name="date" label="Date" rules={[{ required: true }]}>
             <DatePicker className="w-full" defaultValue={dayjs()} />
           </Form.Item>
-          <Form.Item name="method" label="Method" rules={[{ required: true }]}>
-            <Select
-              options={[{ value: "UPI" }, { value: "Cash" }, { value: "Bank" }]}
-            />
-          </Form.Item>
-          <Form.Item name="phase" label="Phase">
-            <Select
-              options={[
-                { value: "Advance" },
-                { value: "Mid" },
-                { value: "Final" },
-              ]}
-            />
-          </Form.Item>
-          <button id="paySubmitAll" type="submit" className="hidden" />
+
+          <button id="paySubmitBtn" type="submit" className="hidden" />
         </Form>
       </Modal>
     </div>

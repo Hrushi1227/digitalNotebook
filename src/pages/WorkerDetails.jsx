@@ -1,223 +1,181 @@
 import {
   Button,
   Card,
-  DatePicker,
   Descriptions,
   Form,
   Input,
   InputNumber,
   Modal,
-  Select,
+  Popconfirm,
   Space,
   Table,
   Tag,
 } from "antd";
-import dayjs from "dayjs";
-import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { Link, useParams } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useSelector } from "react-redux";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
-import { addPayment, selectPayments } from "../store/paymentsSlice";
-import {
-  addTask,
-  deleteTask,
-  selectTasks,
-  updateTask,
-} from "../store/tasksSlice";
-import { applyPaymentToWorker, selectWorkerById } from "../store/workersSlice";
+import { selectPayments } from "../store/paymentsSlice";
+import { selectTasks } from "../store/tasksSlice";
+import { selectWorkers } from "../store/workersSlice";
+
+import { deleteItem, updateItem } from "../firebaseService";
 
 export default function WorkerDetails() {
   const { id } = useParams();
-  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-  const worker = useSelector(selectWorkerById(id));
-  const tasks = useSelector(selectTasks).filter((t) => t.workerId === id);
-  const payments = useSelector(selectPayments).filter((p) => p.workerId === id);
+  const workers = useSelector(selectWorkers);
+  const tasks = useSelector(selectTasks);
+  const payments = useSelector(selectPayments);
 
-  const [openPay, setOpenPay] = useState(false);
-  const [openTask, setOpenTask] = useState(false);
+  const worker = workers.find((w) => w.id === id);
+
+  const [open, setOpen] = useState(false);
 
   if (!worker) {
     return (
-      <Card className="bg-white">
-        <div>
-          Worker not found. <Link to="/workers">Back</Link>
-        </div>
-      </Card>
+      <div className="p-4">
+        <h2 className="text-xl mb-4">Worker not found</h2>
+        <Link to="/workers">
+          <Button type="primary">Go Back</Button>
+        </Link>
+      </div>
     );
   }
 
-  const pending = worker.totalAmount - worker.paidAmount;
+  // Tasks assigned to worker
+  const workerTasks = useMemo(
+    () => tasks.filter((t) => t.workerId === id),
+    [tasks, id]
+  );
+
+  // Payments to worker
+  const workerPayments = useMemo(
+    () => payments.filter((p) => p.workerId === id),
+    [payments, id]
+  );
+
+  const totalPaid = workerPayments.reduce(
+    (a, b) => a + Number(b.amount || 0),
+    0
+  );
 
   const taskColumns = [
-    { title: "Task", dataIndex: "name" },
-    { title: "Status", dataIndex: "status", render: (t) => <Tag>{t}</Tag> },
-    { title: "Cost", dataIndex: "cost" },
-    { title: "Start", dataIndex: "startDate" },
-    { title: "End", dataIndex: "endDate" },
+    { title: "Task", dataIndex: "title" },
     {
-      title: "Action",
-      render: (_, r) => (
-        <Space>
-          <Button onClick={() => setOpenTask(r)}>Edit</Button>
-          <Button danger onClick={() => dispatch(deleteTask(r.id))}>
-            Delete
-          </Button>
-        </Space>
-      ),
+      title: "Status",
+      dataIndex: "status",
+      render: (s) =>
+        s === "pending" ? (
+          <Tag color="orange">Pending</Tag>
+        ) : (
+          <Tag color="green">Completed</Tag>
+        ),
     },
+    { title: "Deadline", dataIndex: "deadline" },
   ];
 
-  const paymentColumns = [
+  const payColumns = [
+    { title: "Amount", dataIndex: "amount", render: (v) => `₹${v}` },
     { title: "Date", dataIndex: "date" },
-    { title: "Amount", dataIndex: "amount" },
-    { title: "Method", dataIndex: "method" },
-    { title: "Phase", dataIndex: "phase" },
+    { title: "Note", dataIndex: "note" },
   ];
 
   return (
-    <div className="space-y-4">
-      {/* Worker Card */}
-      <Card title={worker.name} className="shadow">
-        <Descriptions bordered column={2} size="small">
-          <Descriptions.Item label="Type">{worker.type}</Descriptions.Item>
-          <Descriptions.Item label="Phone">
-            {worker.phone || "-"}
+    <div className="p-4">
+      <Space className="mb-4">
+        <Button onClick={() => navigate("/workers")}>Back</Button>
+
+        <Button type="primary" onClick={() => setOpen(true)}>
+          Edit Worker
+        </Button>
+
+        <Popconfirm
+          title="Delete worker?"
+          onConfirm={() => {
+            deleteItem("workers", id);
+            navigate("/workers");
+          }}
+        >
+          <Button danger>Delete</Button>
+        </Popconfirm>
+      </Space>
+
+      {/* Worker Details */}
+      <Card className="mb-6 shadow">
+        <Descriptions title="Worker Details" bordered column={1}>
+          <Descriptions.Item label="Name">{worker.name}</Descriptions.Item>
+          <Descriptions.Item label="Phone">{worker.phone}</Descriptions.Item>
+          <Descriptions.Item label="Profession">
+            {worker.profession}
           </Descriptions.Item>
-          <Descriptions.Item label="Agreed">
-            ₹ {worker.totalAmount}
+          <Descriptions.Item label="Daily Rate">
+            ₹{worker.rate}
           </Descriptions.Item>
-          <Descriptions.Item label="Paid">
-            ₹ {worker.paidAmount}
-          </Descriptions.Item>
-          <Descriptions.Item label="Pending" span={2}>
-            ₹ {pending}
+          <Descriptions.Item label="Total Paid so far">
+            <b>₹{totalPaid}</b>
           </Descriptions.Item>
         </Descriptions>
-
-        <div className="mt-4 flex gap-2">
-          <Button type="primary" onClick={() => setOpenPay(true)}>
-            Add Payment
-          </Button>
-          <Button onClick={() => setOpenTask({})}>Add Task</Button>
-          <Link to="/workers">
-            <Button>Back</Button>
-          </Link>
-        </div>
       </Card>
 
       {/* Tasks */}
-      <Card title="Tasks" className="shadow">
-        <Table rowKey="id" dataSource={tasks} columns={taskColumns} />
+      <Card className="mb-6 shadow" title="Assigned Tasks">
+        <Table
+          rowKey="id"
+          dataSource={workerTasks}
+          columns={taskColumns}
+          pagination={false}
+        />
       </Card>
 
       {/* Payments */}
-      <Card title="Payments" className="shadow">
-        <Table rowKey="id" dataSource={payments} columns={paymentColumns} />
+      <Card className="shadow" title="Payment History">
+        <Table
+          rowKey="id"
+          dataSource={workerPayments}
+          columns={payColumns}
+          pagination={false}
+        />
       </Card>
 
-      {/* Payment Modal */}
+      {/* Edit Modal */}
       <Modal
-        open={openPay}
-        title="Add Payment"
-        onCancel={() => setOpenPay(false)}
-        onOk={() => document.getElementById("paymentSubmit").click()}
+        open={open}
+        title="Edit Worker"
+        onCancel={() => setOpen(false)}
+        onOk={() => document.getElementById("editWorkerBtn").click()}
       >
         <Form
           layout="vertical"
-          onFinish={(values) => {
-            const payload = {
-              ...values,
-              date: values.date.format("YYYY-MM-DD"),
-              workerId: id,
-            };
-            dispatch(addPayment(payload));
-            dispatch(
-              applyPaymentToWorker({ workerId: id, amount: values.amount })
-            );
-            setOpenPay(false);
+          initialValues={{
+            name: worker.name,
+            phone: worker.phone,
+            rate: worker.rate,
+            profession: worker.profession,
+          }}
+          onFinish={async (vals) => {
+            await updateItem("workers", worker.id, vals);
+            setOpen(false);
           }}
         >
-          <Form.Item name="amount" label="Amount" rules={[{ required: true }]}>
-            <InputNumber className="w-full" min={0} />
-          </Form.Item>
-          <Form.Item name="date" label="Date" rules={[{ required: true }]}>
-            <DatePicker className="w-full" defaultValue={dayjs()} />
-          </Form.Item>
-          <Form.Item name="method" label="Method" rules={[{ required: true }]}>
-            <Select
-              options={[
-                { value: "UPI", label: "UPI" },
-                { value: "Cash", label: "Cash" },
-                { value: "Bank", label: "Bank" },
-              ]}
-            />
-          </Form.Item>
-          <Form.Item name="phase" label="Phase">
-            <Select
-              options={[
-                { value: "Advance", label: "Advance" },
-                { value: "Mid", label: "Mid" },
-                { value: "Final", label: "Final" },
-              ]}
-            />
-          </Form.Item>
-
-          <button id="paymentSubmit" type="submit" className="hidden" />
-        </Form>
-      </Modal>
-
-      {/* Task Modal */}
-      <Modal
-        open={!!openTask}
-        title={openTask?.id ? "Edit Task" : "Add Task"}
-        onCancel={() => setOpenTask(false)}
-        onOk={() => document.getElementById("taskSubmit").click()}
-      >
-        <Form
-          layout="vertical"
-          initialValues={openTask?.id ? openTask : { status: "pending" }}
-          onFinish={(values) => {
-            const payload = {
-              ...openTask,
-              ...values,
-              workerId: id,
-            };
-            if (openTask?.id) {
-              dispatch(updateTask(payload));
-            } else {
-              dispatch(addTask(payload));
-            }
-            setOpenTask(false);
-          }}
-        >
-          <Form.Item name="name" label="Task" rules={[{ required: true }]}>
+          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
             <Input />
           </Form.Item>
 
-          <Form.Item name="status" label="Status" rules={[{ required: true }]}>
-            <Select
-              options={[
-                { value: "pending", label: "Pending" },
-                { value: "in-progress", label: "In Progress" },
-                { value: "done", label: "Done" },
-              ]}
-            />
+          <Form.Item name="phone" label="Phone">
+            <Input />
           </Form.Item>
 
-          <Form.Item name="cost" label="Cost">
+          <Form.Item name="profession" label="Profession">
+            <Input />
+          </Form.Item>
+
+          <Form.Item name="rate" label="Daily Rate">
             <InputNumber className="w-full" min={0} />
           </Form.Item>
 
-          <Form.Item name="startDate" label="Start Date">
-            <Input placeholder="YYYY-MM-DD" />
-          </Form.Item>
-
-          <Form.Item name="endDate" label="End Date">
-            <Input placeholder="YYYY-MM-DD" />
-          </Form.Item>
-
-          <button id="taskSubmit" type="submit" className="hidden" />
+          <button id="editWorkerBtn" type="submit" className="hidden" />
         </Form>
       </Modal>
     </div>

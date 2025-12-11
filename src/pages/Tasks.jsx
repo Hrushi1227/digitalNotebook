@@ -1,61 +1,58 @@
 import {
   Button,
+  DatePicker,
   Form,
   Input,
-  InputNumber,
   Modal,
   Popconfirm,
   Select,
-  Space,
   Table,
   Tag,
 } from "antd";
 import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import PageHeader from "../components/common/PageHeader";
-import {
-  addTask,
-  deleteTask,
-  selectTasks,
-  updateTask,
-} from "../store/tasksSlice";
+import { useSelector } from "react-redux";
+
+import dayjs from "dayjs";
+
+import { selectTasks } from "../store/tasksSlice";
 import { selectWorkers } from "../store/workersSlice";
+
+import { addItem, deleteItem, updateItem } from "../firebaseService";
 
 export default function Tasks() {
   const tasks = useSelector(selectTasks);
   const workers = useSelector(selectWorkers);
-  const dispatch = useDispatch();
+
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
 
   const columns = [
-    { title: "Task", dataIndex: "name" },
     {
-      title: "Worker",
+      title: "Task",
+      dataIndex: "title",
+    },
+    {
+      title: "Assigned To",
       dataIndex: "workerId",
       render: (id) => workers.find((w) => w.id === id)?.name || "-",
     },
     {
       title: "Status",
       dataIndex: "status",
-      render: (t) => (
-        <Tag
-          color={
-            t === "done" ? "green" : t === "in-progress" ? "blue" : "default"
-          }
-        >
-          {t}
-        </Tag>
-      ),
+      render: (s) =>
+        s === "pending" ? (
+          <Tag color="orange">Pending</Tag>
+        ) : (
+          <Tag color="green">Completed</Tag>
+        ),
     },
-    { title: "Cost", dataIndex: "cost" },
-    { title: "Start", dataIndex: "startDate" },
-    { title: "End", dataIndex: "endDate" },
+    { title: "Deadline", dataIndex: "deadline" },
     {
-      title: "Action",
+      title: "Actions",
       render: (_, r) => (
-        <Space>
+        <div className="flex gap-2">
           <Button
+            size="small"
             onClick={() => {
               setEdit(r);
               setOpen(true);
@@ -63,80 +60,117 @@ export default function Tasks() {
           >
             Edit
           </Button>
+
           <Popconfirm
             title="Delete task?"
-            onConfirm={() => dispatch(deleteTask(r.id))}
+            onConfirm={() => deleteItem("tasks", r.id)}
           >
-            <Button danger>Delete</Button>
+            <Button danger size="small">
+              Delete
+            </Button>
           </Popconfirm>
-        </Space>
+
+          {r.status === "pending" && (
+            <Button
+              size="small"
+              type="primary"
+              onClick={() =>
+                updateItem("tasks", r.id, { ...r, status: "completed" })
+              }
+            >
+              Mark Done
+            </Button>
+          )}
+        </div>
       ),
     },
   ];
 
   return (
-    <div>
-      <PageHeader
-        title="Tasks"
-        extra={
-          <Button
-            type="primary"
-            onClick={() => {
-              setEdit(null);
-              setOpen(true);
-            }}
-          >
-            Add Task
-          </Button>
-        }
-      />
-      <div className="bg-white rounded-xl p-4 shadow">
-        <Table rowKey="id" columns={columns} dataSource={tasks} />
+    <div className="p-2">
+      <div className="flex justify-between mb-4">
+        <h1 className="text-xl font-semibold">Tasks</h1>
+
+        <Button
+          type="primary"
+          onClick={() => {
+            setEdit(null);
+            setOpen(true);
+          }}
+        >
+          Add Task
+        </Button>
       </div>
+
+      <Table
+        rowKey="id"
+        dataSource={tasks}
+        columns={columns}
+        className="bg-white rounded-lg shadow"
+      />
 
       <Modal
         open={open}
-        title={edit ? "Edit Task" : "Add Task"}
         onCancel={() => setOpen(false)}
-        onOk={() => document.getElementById("taskSubmitAll").click()}
+        onOk={() => document.getElementById("taskSubmitBtn").click()}
+        title={edit ? "Edit Task" : "Add Task"}
       >
         <Form
           layout="vertical"
-          initialValues={edit || { status: "pending" }}
-          onFinish={(vals) => {
-            const payload = { ...edit, ...vals };
-            if (edit) dispatch(updateTask(payload));
-            else dispatch(addTask(payload));
+          initialValues={
+            edit
+              ? { ...edit, deadline: dayjs(edit.deadline) }
+              : { status: "pending", deadline: dayjs() }
+          }
+          onFinish={async (vals) => {
+            const payload = {
+              title: vals.title,
+              workerId: vals.workerId,
+              status: edit?.status || "pending",
+              deadline: vals.deadline.format("YYYY-MM-DD"),
+            };
+
+            if (edit) {
+              await updateItem("tasks", edit.id, payload);
+            } else {
+              await addItem("tasks", payload);
+            }
+
             setOpen(false);
+            setEdit(null);
           }}
         >
-          <Form.Item name="name" label="Task" rules={[{ required: true }]}>
-            <Input />
+          <Form.Item
+            name="title"
+            label="Task Title"
+            rules={[{ required: true }]}
+          >
+            <Input placeholder="Example: Install wiring" />
           </Form.Item>
-          <Form.Item name="workerId" label="Assign Worker">
+
+          <Form.Item
+            name="workerId"
+            label="Assign To"
+            rules={[{ required: true }]}
+          >
             <Select
-              options={workers.map((w) => ({ value: w.id, label: w.name }))}
+              placeholder="Select worker"
+              options={workers.map((w) => ({
+                value: w.id,
+                label: w.name,
+              }))}
             />
           </Form.Item>
-          <Form.Item name="status" label="Status" rules={[{ required: true }]}>
-            <Select
-              options={[
-                { value: "pending", label: "Pending" },
-                { value: "in-progress", label: "In Progress" },
-                { value: "done", label: "Done" },
-              ]}
-            />
+
+          <Form.Item
+            name="deadline"
+            label="Deadline"
+            rules={[{ required: true }]}
+          >
+            <DatePicker className="w-full" />
           </Form.Item>
-          <Form.Item name="cost" label="Cost">
-            <InputNumber className="w-full" min={0} />
-          </Form.Item>
-          <Form.Item name="startDate" label="Start Date">
-            <Input placeholder="YYYY-MM-DD" />
-          </Form.Item>
-          <Form.Item name="endDate" label="End Date">
-            <Input placeholder="YYYY-MM-DD" />
-          </Form.Item>
-          <button id="taskSubmitAll" type="submit" className="hidden" />
+
+          <button id="taskSubmitBtn" type="submit" className="hidden" />
         </Form>
       </Modal>
     </div>

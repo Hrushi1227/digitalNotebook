@@ -1,24 +1,32 @@
 import { Card, InputNumber, Table } from "antd";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import PageHeader from "../components/common/PageHeader";
-import { selectBudgets, setAllocation } from "../store/budgetsSlice";
+
+import { updateItem } from "../firebaseService";
+import { selectBudgets } from "../store/budgetsSlice";
 
 export default function Budgets() {
-  const dispatch = useDispatch();
-  const data = useSelector(selectBudgets);
+  const budgets = useSelector(selectBudgets);
 
   const columns = [
-    { title: "Category", dataIndex: "key" },
     {
-      title: "Allocated ₹",
+      title: "Category",
+      dataIndex: "key",
+    },
+    {
+      title: "Allocated (₹)",
       dataIndex: "allocated",
-      render: (v, r) => (
+      render: (value, record) => (
         <InputNumber
-          value={v}
           min={0}
-          onChange={(val) =>
-            dispatch(setAllocation({ key: r.key, allocated: val }))
-          }
+          className="w-full"
+          value={value}
+          onChange={(val) => {
+            updateItem("budgets", record.id, {
+              ...record,
+              allocated: val,
+            });
+          }}
         />
       ),
     },
@@ -27,11 +35,12 @@ export default function Budgets() {
   return (
     <div>
       <PageHeader title="Budget Allocation" />
-      <Card className="p-4">
+
+      <Card className="p-4 shadow-lg rounded-xl bg-white">
         <Table
-          rowKey="key"
-          dataSource={data}
+          rowKey="id"
           columns={columns}
+          dataSource={budgets}
           pagination={false}
         />
       </Card>

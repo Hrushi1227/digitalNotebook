@@ -1,7 +1,3 @@
-import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-
-// AntD imports
 import {
   Button,
   DatePicker,
@@ -14,24 +10,17 @@ import {
   Space,
   Table,
 } from "antd";
-
-// Day.js
 import dayjs from "dayjs";
+import { useState } from "react";
+import { useSelector } from "react-redux";
 
-// Redux slice actions & selectors
-import {
-  addMaterial,
-  deleteMaterial,
-  selectMaterials,
-  updateMaterial,
-} from "../store/materialsSlice";
-
-// Common components
 import PageHeader from "../components/common/PageHeader";
+import { addItem, deleteItem, updateItem } from "../firebaseService";
+
+import { selectMaterials } from "../store/materialsSlice";
 
 export default function Materials() {
   const materials = useSelector(selectMaterials);
-  const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
 
@@ -56,7 +45,7 @@ export default function Materials() {
           </Button>
           <Popconfirm
             title="Delete material?"
-            onConfirm={() => dispatch(deleteMaterial(r.id))}
+            onConfirm={() => deleteItem("materials", r.id)}
           >
             <Button danger>Delete</Button>
           </Popconfirm>
@@ -73,7 +62,7 @@ export default function Materials() {
         title="Materials"
         extra={
           <div className="text-gray-600">
-            Total Spend: <b>₹ {total}</b>
+            Total Spend: <b>₹{total}</b>
           </div>
         }
       />
@@ -102,18 +91,19 @@ export default function Materials() {
       >
         <Form
           layout="vertical"
-          initialValues={edit || { date: dayjs().format("YYYY-MM-DD") }}
-          onFinish={(vals) => {
+          initialValues={edit || { date: dayjs() }}
+          onFinish={async (vals) => {
             const payload = {
-              ...edit,
               ...vals,
-              date: vals.date?.format
-                ? vals.date.format("YYYY-MM-DD")
-                : vals.date,
+              date: vals.date.format("YYYY-MM-DD"),
             };
 
-            if (edit) dispatch(updateMaterial(payload));
-            else dispatch(addMaterial(payload));
+            if (edit) {
+              await updateItem("materials", edit.id, payload);
+            } else {
+              await addItem("materials", payload);
+            }
+
             setOpen(false);
           }}
         >
@@ -147,7 +137,7 @@ export default function Materials() {
           </Form.Item>
 
           <Form.Item name="date" label="Date" rules={[{ required: true }]}>
-            <DatePicker className="w-full" defaultValue={dayjs()} />
+            <DatePicker className="w-full" />
           </Form.Item>
 
           <button id="matSubmit" type="submit" className="hidden" />

@@ -1,27 +1,19 @@
 import { createSlice } from "@reduxjs/toolkit";
 
-const initialState = {
-  categories: [
-    { key: "Electrical", allocated: 80000 },
-    { key: "POP", allocated: 60000 },
-    { key: "Furniture", allocated: 120000 },
-    { key: "Paint", allocated: 40000 },
-    { key: "Other", allocated: 20000 },
-  ],
-};
-
 const budgetsSlice = createSlice({
   name: "budgets",
-  initialState,
+  initialState: [],
   reducers: {
-    setAllocation(state, { payload }) {
-      const i = state.categories.findIndex((c) => c.key === payload.key);
-      if (i >= 0) state.categories[i].allocated = payload.allocated;
+    setAll(state, action) {
+      return action.payload;
+    },
+    updateBudget(state, action) {
+      const i = state.findIndex((b) => b.key === action.payload.key);
+      if (i >= 0) state[i].allocated = action.payload.allocated;
     },
   },
 });
 
-export const { setAllocation } = budgetsSlice.actions;
+export const { setAll, updateBudget } = budgetsSlice.actions;
+export const selectBudgets = (s) => s.budgets;
 export default budgetsSlice.reducer;
-
-export const selectBudgets = (s) => s.budgets.categories;

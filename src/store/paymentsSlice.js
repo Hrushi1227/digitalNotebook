@@ -1,37 +1,27 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { nanoid } from "nanoid";
 
-const initialState = {
-  list: [
-    {
-      id: "p1",
-      workerId: "w1",
-      amount: 20000,
-      date: "2025-12-04",
-      method: "UPI",
-      phase: "Advance",
-    },
-  ],
-};
-
 const paymentsSlice = createSlice({
   name: "payments",
-  initialState,
+  initialState: [],
   reducers: {
+    setAll(state, action) {
+      return action.payload;
+    },
     addPayment: {
-      reducer(state, { payload }) {
-        state.list.push(payload);
+      reducer(state, action) {
+        state.push(action.payload);
       },
       prepare(data) {
         return { payload: { id: nanoid(), ...data } };
       },
     },
-    deletePayment(state, { payload }) {
-      state.list = state.list.filter((p) => p.id !== payload);
+    deletePayment(state, action) {
+      return state.filter((p) => p.id !== action.payload);
     },
   },
 });
 
-export const { addPayment, deletePayment } = paymentsSlice.actions;
+export const { setAll, addPayment, deletePayment } = paymentsSlice.actions;
+export const selectPayments = (s) => s.payments;
 export default paymentsSlice.reducer;
-export const selectPayments = (s) => s.payments.list;
