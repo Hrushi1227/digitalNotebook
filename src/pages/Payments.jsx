@@ -9,11 +9,15 @@ import {
   Table,
 } from "antd";
 import { useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import dayjs from "dayjs";
 
-import { selectPayments } from "../store/paymentsSlice";
+import {
+  addPayment,
+  deletePayment,
+  selectPayments,
+} from "../store/paymentsSlice";
 import { selectWorkers } from "../store/workersSlice";
 
 import { addItem, deleteItem } from "../firebaseService";
@@ -21,6 +25,7 @@ import { addItem, deleteItem } from "../firebaseService";
 export default function Payments() {
   const payments = useSelector(selectPayments);
   const workers = useSelector(selectWorkers);
+  const dispatch = useDispatch();
 
   const [open, setOpen] = useState(false);
 
@@ -38,7 +43,10 @@ export default function Payments() {
       render: (_, r) => (
         <Popconfirm
           title="Delete payment?"
-          onConfirm={() => deleteItem("payments", r.id)}
+          onConfirm={async () => {
+            await deleteItem("payments", r.id);
+            dispatch(deletePayment(r.id));
+          }}
         >
           <Button danger size="small">
             Delete
@@ -74,12 +82,14 @@ export default function Payments() {
         <Form
           layout="vertical"
           onFinish={async (vals) => {
-            await addItem("payments", {
+            const payload = {
               workerId: vals.workerId,
               amount: vals.amount,
               note: vals.note || "",
               date: vals.date.format("YYYY-MM-DD"),
-            });
+            };
+            const res = await addItem("payments", payload);
+            dispatch(addPayment({ id: res.id, ...payload }));
 
             setOpen(false);
           }}

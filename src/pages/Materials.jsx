@@ -12,15 +12,21 @@ import {
 } from "antd";
 import dayjs from "dayjs";
 import { useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import PageHeader from "../components/common/PageHeader";
 import { addItem, deleteItem, updateItem } from "../firebaseService";
 
-import { selectMaterials } from "../store/materialsSlice";
+import {
+  addMaterial,
+  deleteMaterial,
+  selectMaterials,
+  updateMaterial,
+} from "../store/materialsSlice";
 
 export default function Materials() {
   const materials = useSelector(selectMaterials);
+  const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
 
@@ -45,7 +51,10 @@ export default function Materials() {
           </Button>
           <Popconfirm
             title="Delete material?"
-            onConfirm={() => deleteItem("materials", r.id)}
+            onConfirm={async () => {
+              await deleteItem("materials", r.id);
+              dispatch(deleteMaterial(r.id));
+            }}
           >
             <Button danger>Delete</Button>
           </Popconfirm>
@@ -100,8 +109,10 @@ export default function Materials() {
 
             if (edit) {
               await updateItem("materials", edit.id, payload);
+              dispatch(updateMaterial({ id: edit.id, ...payload }));
             } else {
-              await addItem("materials", payload);
+              const res = await addItem("materials", payload);
+              dispatch(addMaterial({ id: res.id, ...payload }));
             }
 
             setOpen(false);

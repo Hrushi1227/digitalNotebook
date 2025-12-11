@@ -9,15 +9,21 @@ import {
   Table,
 } from "antd";
 import { useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import { Link } from "react-router-dom";
 
 import { addItem, deleteItem, updateItem } from "../firebaseService";
-import { selectWorkers } from "../store/workersSlice";
+import {
+  addWorker,
+  deleteWorker,
+  selectWorkers,
+  updateWorker,
+} from "../store/workersSlice";
 
 export default function Workers() {
   const workers = useSelector(selectWorkers);
+  const dispatch = useDispatch();
 
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
@@ -52,7 +58,10 @@ export default function Workers() {
 
           <Popconfirm
             title="Delete worker?"
-            onConfirm={() => deleteItem("workers", r.id)}
+            onConfirm={async () => {
+              await deleteItem("workers", r.id);
+              dispatch(deleteWorker(r.id));
+            }}
           >
             <Button size="small" danger>
               Delete
@@ -113,13 +122,17 @@ export default function Workers() {
           onFinish={async (vals) => {
             if (edit) {
               await updateItem("workers", edit.id, vals);
+              dispatch(updateWorker({ id: edit.id, ...vals }));
             } else {
-              await addItem("workers", {
+              const res = await addItem("workers", {
                 name: vals.name,
                 phone: vals.phone,
                 profession: vals.profession,
                 rate: vals.rate || 0,
               });
+              dispatch(
+                addWorker({ id: res.id, ...vals, rate: vals.rate || 0 })
+              );
             }
             setOpen(false);
             setEdit(null);

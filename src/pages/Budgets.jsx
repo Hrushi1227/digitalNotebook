@@ -22,7 +22,7 @@ export default function Budgets() {
           className="w-full"
           value={value}
           onChange={(val) => {
-            updateItem("budgets", record.id, {
+            updateItem("budgets", record.key, {
               ...record,
               allocated: val,
             });

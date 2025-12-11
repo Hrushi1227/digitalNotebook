@@ -10,11 +10,16 @@ import {
   Tag,
 } from "antd";
 import { useState } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 
 import dayjs from "dayjs";
 
-import { selectTasks } from "../store/tasksSlice";
+import {
+  addTask,
+  deleteTask,
+  selectTasks,
+  updateTask,
+} from "../store/tasksSlice";
 import { selectWorkers } from "../store/workersSlice";
 
 import { addItem, deleteItem, updateItem } from "../firebaseService";
@@ -22,6 +27,7 @@ import { addItem, deleteItem, updateItem } from "../firebaseService";
 export default function Tasks() {
   const tasks = useSelector(selectTasks);
   const workers = useSelector(selectWorkers);
+  const dispatch = useDispatch();
 
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
@@ -63,7 +69,10 @@ export default function Tasks() {
 
           <Popconfirm
             title="Delete task?"
-            onConfirm={() => deleteItem("tasks", r.id)}
+            onConfirm={async () => {
+              await deleteItem("tasks", r.id);
+              dispatch(deleteTask(r.id));
+            }}
           >
             <Button danger size="small">
               Delete
@@ -74,9 +83,10 @@ export default function Tasks() {
             <Button
               size="small"
               type="primary"
-              onClick={() =>
-                updateItem("tasks", r.id, { ...r, status: "completed" })
-              }
+              onClick={async () => {
+                await updateItem("tasks", r.id, { ...r, status: "completed" });
+                dispatch(updateTask({ id: r.id, status: "completed" }));
+              }}
             >
               Mark Done
             </Button>
@@ -132,8 +142,10 @@ export default function Tasks() {
 
             if (edit) {
               await updateItem("tasks", edit.id, payload);
+              dispatch(updateTask({ id: edit.id, ...payload }));
             } else {
-              await addItem("tasks", payload);
+              const res = await addItem("tasks", payload);
+              dispatch(addTask({ id: res.id, ...payload }));
             }
 
             setOpen(false);
