@@ -86,12 +86,15 @@ export default function Workers() {
       </div>
 
       {/* Table */}
-      <Table
-        rowKey="id"
-        dataSource={workers}
-        columns={columns}
-        className="bg-white p-2 rounded-lg shadow"
-      />
+      <div style={{ overflowX: "auto" }}>
+        <Table
+          rowKey="id"
+          dataSource={workers}
+          columns={columns}
+          className="bg-white p-2 rounded-lg shadow"
+          scroll={{ x: "max-content" }}
+        />
+      </div>
 
       {/* Add / Edit Modal */}
       <Modal

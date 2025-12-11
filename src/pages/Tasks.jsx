@@ -116,12 +116,15 @@ export default function Tasks() {
         </Button>
       </div>
 
-      <Table
-        rowKey="id"
-        dataSource={tasks}
-        columns={columns}
-        className="bg-white rounded-lg shadow"
-      />
+      <div style={{ overflowX: "auto" }}>
+        <Table
+          rowKey="id"
+          dataSource={tasks}
+          columns={columns}
+          className="bg-white rounded-lg shadow"
+          scroll={{ x: "max-content" }}
+        />
+      </div>
 
       <Modal
         open={open}

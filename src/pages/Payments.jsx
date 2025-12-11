@@ -75,12 +75,15 @@ export default function Payments() {
         </Button>
       </div>
 
-      <Table
-        rowKey="id"
-        dataSource={paymentsUnique}
-        columns={columns}
-        className="bg-white p-2 rounded-lg shadow"
-      />
+      <div style={{ overflowX: "auto" }}>
+        <Table
+          rowKey="id"
+          dataSource={paymentsUnique}
+          columns={columns}
+          className="bg-white p-2 rounded-lg shadow"
+          scroll={{ x: "max-content" }}
+        />
+      </div>
 
       <Modal
         open={open}

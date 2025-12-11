@@ -37,12 +37,15 @@ export default function Budgets() {
       <PageHeader title="Budget Allocation" />
 
       <Card className="p-4 shadow-lg rounded-xl bg-white">
-        <Table
-          rowKey="id"
-          columns={columns}
-          dataSource={budgets}
-          pagination={false}
-        />
+        <div style={{ overflowX: "auto" }}>
+          <Table
+            rowKey="id"
+            columns={columns}
+            dataSource={budgets}
+            pagination={false}
+            scroll={{ x: "max-content" }}
+          />
+        </div>
       </Card>
     </div>
   );

@@ -157,12 +157,15 @@ export default function Dashboard() {
       <h2 className="text-xl font-semibold mt-10 mb-4">Upcoming Payments</h2>
 
       <Card>
-        <Table
-          rowKey="id"
-          dataSource={upcoming}
-          columns={scheduleColumns}
-          pagination={false}
-        />
+        <div style={{ overflowX: "auto" }}>
+          <Table
+            rowKey="id"
+            dataSource={upcoming}
+            columns={scheduleColumns}
+            pagination={false}
+            scroll={{ x: "max-content" }}
+          />
+        </div>
       </Card>
     </div>
   );

@@ -94,8 +94,16 @@ export default function Materials() {
         </Button>
       </div>
 
-      <div className="bg-white rounded-xl p-4 shadow">
-        <Table rowKey="id" dataSource={materials} columns={columns} />
+      <div
+        className="bg-white rounded-xl p-4 shadow"
+        style={{ overflowX: "auto" }}
+      >
+        <Table
+          rowKey="id"
+          dataSource={materials}
+          columns={columns}
+          scroll={{ x: "max-content" }}
+        />
       </div>
 
       <Modal

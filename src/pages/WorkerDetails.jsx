@@ -126,22 +126,28 @@ export default function WorkerDetails() {
 
       {/* Tasks */}
       <Card className="mb-6 shadow" title="Assigned Tasks">
-        <Table
-          rowKey="id"
-          dataSource={workerTasks}
-          columns={taskColumns}
-          pagination={false}
-        />
+        <div style={{ overflowX: "auto" }}>
+          <Table
+            rowKey="id"
+            dataSource={workerTasks}
+            columns={taskColumns}
+            pagination={false}
+            scroll={{ x: "max-content" }}
+          />
+        </div>
       </Card>
 
       {/* Payments */}
       <Card className="shadow" title="Payment History">
-        <Table
-          rowKey="id"
-          dataSource={workerPayments}
-          columns={payColumns}
-          pagination={false}
-        />
+        <div style={{ overflowX: "auto" }}>
+          <Table
+            rowKey="id"
+            dataSource={workerPayments}
+            columns={payColumns}
+            pagination={false}
+            scroll={{ x: "max-content" }}
+          />
+        </div>
       </Card>
 
       {/* Edit Modal */}

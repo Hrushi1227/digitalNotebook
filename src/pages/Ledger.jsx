@@ -124,7 +124,14 @@ export default function Ledger() {
 
       {/* Ledger table */}
       <Card className="mt-6">
-        <Table rowKey="id" dataSource={ledger} columns={columns} />
+        <div style={{ overflowX: "auto" }}>
+          <Table
+            rowKey="id"
+            dataSource={ledger}
+            columns={columns}
+            scroll={{ x: "max-content" }}
+          />
+        </div>
       </Card>
 
       {/* Add Entry Modal */}
