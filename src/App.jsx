@@ -1,11 +1,13 @@
 import {
   CheckSquareOutlined,
   DashboardOutlined,
+  MenuOutlined,
   ShoppingCartOutlined,
   TeamOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
-import { Layout, Menu } from "antd";
+import { Button, Layout, Menu } from "antd";
+import { useState } from "react";
 import { Link, Route, Routes, useLocation } from "react-router-dom";
 
 import Budgets from "./pages/Budgets";
@@ -71,11 +73,20 @@ const items = [
 
 export default function App() {
   const location = useLocation();
+  const [collapsed, setCollapsed] = useState(false);
 
   return (
     <Layout className="min-h-screen">
       {/* Sidebar */}
-      <Sider breakpoint="lg" collapsedWidth={0} width={220}>
+      <Sider
+        breakpoint="lg"
+        collapsedWidth={0}
+        width={220}
+        collapsible
+        collapsed={collapsed}
+        onCollapse={(val) => setCollapsed(val)}
+        trigger={null}
+      >
         <div className="text-white text-lg font-semibold px-4 py-3">
           Renovation
         </div>
@@ -90,6 +101,13 @@ export default function App() {
       {/* Main Layout */}
       <Layout>
         <Header className="bg-white shadow-sm px-6 flex items-center">
+          <div className="lg:hidden mr-3">
+            <Button
+              type="text"
+              onClick={() => setCollapsed(!collapsed)}
+              icon={<MenuOutlined />}
+            />
+          </div>
           <div className="text-xl font-semibold">Home Renovation Tracker</div>
         </Header>
 

@@ -34,6 +34,11 @@ body,
   }
 }
 
+/* Hide ant's zero-width trigger which can push layout on small screens */
+.ant-layout-sider-zero-width-trigger {
+  display: none !important;
+}
+
 /* Make AntD tables responsive on small screens */
 .ant-table-wrapper {
   width: 100%;
