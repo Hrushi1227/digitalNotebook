@@ -1,21 +1,24 @@
-import { Button, Popconfirm, Space, Table, Tag } from "antd";
-import { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { Link } from "react-router-dom";
-import PageHeader from "../components/common/PageHeader";
-import AddWorkerModal from "../components/workers/AddWorkerModal";
 import {
-  addWorker,
-  deleteWorker,
-  selectWorkers,
-  selectWorkerTotals,
-  updateWorker,
-} from "../store/workersSlice";
+  Button,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Popconfirm,
+  Space,
+  Table,
+} from "antd";
+import { useState } from "react";
+import { useSelector } from "react-redux";
+
+import { Link } from "react-router-dom";
+
+import { addItem, deleteItem, updateItem } from "../firebaseService";
+import { selectWorkers } from "../store/workersSlice";
 
 export default function Workers() {
   const workers = useSelector(selectWorkers);
-  const totals = useSelector(selectWorkerTotals);
-  const dispatch = useDispatch();
+
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
 
@@ -23,41 +26,37 @@ export default function Workers() {
     {
       title: "Name",
       dataIndex: "name",
-      key: "name",
-      render: (t, r) => <Link to={`/workers/${r.id}`}>{t}</Link>,
+      render: (text, r) => (
+        <Link className="text-blue-600" to={`/workers/${r.id}`}>
+          {text}
+        </Link>
+      ),
     },
+    { title: "Phone", dataIndex: "phone" },
+    { title: "Profession", dataIndex: "profession" },
+    { title: "Rate (₹/day)", dataIndex: "rate" },
+
     {
-      title: "Type",
-      dataIndex: "type",
-      key: "type",
-      render: (t) => <Tag>{t}</Tag>,
-    },
-    { title: "Phone", dataIndex: "phone", key: "phone" },
-    { title: "Agreed", dataIndex: "totalAmount", key: "totalAmount" },
-    { title: "Paid", dataIndex: "paidAmount", key: "paidAmount" },
-    {
-      title: "Pending",
-      key: "pending",
-      render: (_, r) => (r.totalAmount || 0) - (r.paidAmount || 0),
-    },
-    {
-      title: "Action",
-      key: "action",
-      render: (_, record) => (
+      title: "Actions",
+      render: (_, r) => (
         <Space>
           <Button
+            size="small"
             onClick={() => {
-              setEdit(record);
+              setEdit(r);
               setOpen(true);
             }}
           >
             Edit
           </Button>
+
           <Popconfirm
             title="Delete worker?"
-            onConfirm={() => dispatch(deleteWorker(record.id))}
+            onConfirm={() => deleteItem("workers", r.id)}
           >
-            <Button danger>Delete</Button>
+            <Button size="small" danger>
+              Delete
+            </Button>
           </Popconfirm>
         </Space>
       ),
@@ -65,40 +64,86 @@ export default function Workers() {
   ];
 
   return (
-    <div>
-      <PageHeader
-        title="Workers"
-        extra={
-          <Space>
-            <div className="text-gray-600">
-              Budget: <b>{totals.budget}</b> · Paid: <b>{totals.paid}</b> ·
-              Pending: <b>{totals.pending}</b>
-            </div>
-            <Button
-              type="primary"
-              onClick={() => {
-                setEdit(null);
-                setOpen(true);
-              }}
-            >
-              Add Worker
-            </Button>
-          </Space>
-        }
-      />
-      <div className="bg-white rounded-xl p-4 shadow">
-        <Table rowKey="id" columns={columns} dataSource={workers} />
+    <div className="p-2">
+      {/* Header */}
+      <div className="flex justify-between mb-4">
+        <h1 className="text-xl font-semibold">Workers</h1>
+
+        <Button
+          type="primary"
+          onClick={() => {
+            setEdit(null);
+            setOpen(true);
+          }}
+        >
+          Add Worker
+        </Button>
       </div>
-      <AddWorkerModal
-        open={open}
-        initialValues={edit || undefined}
-        onCancel={() => setOpen(false)}
-        onSubmit={(values) => {
-          if (edit) dispatch(updateWorker({ id: edit.id, ...values }));
-          else dispatch(addWorker(values));
-          setOpen(false);
-        }}
+
+      {/* Table */}
+      <Table
+        rowKey="id"
+        dataSource={workers}
+        columns={columns}
+        className="bg-white p-2 rounded-lg shadow"
       />
+
+      {/* Add / Edit Modal */}
+      <Modal
+        open={open}
+        title={edit ? "Edit Worker" : "Add Worker"}
+        onCancel={() => {
+          setOpen(false);
+          setEdit(null);
+        }}
+        onOk={() => document.getElementById("workerSubmitBtn").click()}
+      >
+        <Form
+          layout="vertical"
+          initialValues={
+            edit
+              ? {
+                  name: edit.name,
+                  phone: edit.phone,
+                  profession: edit.profession,
+                  rate: edit.rate,
+                }
+              : {}
+          }
+          onFinish={async (vals) => {
+            if (edit) {
+              await updateItem("workers", edit.id, vals);
+            } else {
+              await addItem("workers", {
+                name: vals.name,
+                phone: vals.phone,
+                profession: vals.profession,
+                rate: vals.rate || 0,
+              });
+            }
+            setOpen(false);
+            setEdit(null);
+          }}
+        >
+          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
+            <Input placeholder="Worker Name" />
+          </Form.Item>
+
+          <Form.Item name="phone" label="Phone">
+            <Input placeholder="Phone Number" />
+          </Form.Item>
+
+          <Form.Item name="profession" label="Profession">
+            <Input placeholder="Electrician, POP, Carpenter etc." />
+          </Form.Item>
+
+          <Form.Item name="rate" label="Daily Rate (₹)">
+            <InputNumber className="w-full" min={0} />
+          </Form.Item>
+
+          <button id="workerSubmitBtn" type="submit" className="hidden" />
+        </Form>
+      </Modal>
     </div>
   );
 }
