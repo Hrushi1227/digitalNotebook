@@ -1,18 +1,10 @@
-import {
-  Button,
-  Form,
-  Input,
-  InputNumber,
-  Modal,
-  Popconfirm,
-  Space,
-  Table,
-} from "antd";
+import { Button, Form, Input, InputNumber, Modal, Space, Table } from "antd";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import { Link } from "react-router-dom";
 
+import ProtectedAction from "../components/common/ProtectedAction";
 import { addItem, deleteItem, updateItem } from "../firebaseService";
 import {
   addWorker,
@@ -46,27 +38,31 @@ export default function Workers() {
       title: "Actions",
       render: (_, r) => (
         <Space>
-          <Button
-            size="small"
-            onClick={() => {
+          <ProtectedAction
+            onAuthorized={() => {
               setEdit(r);
               setOpen(true);
             }}
           >
-            Edit
-          </Button>
+            <Button size="small">Edit</Button>
+          </ProtectedAction>
 
-          <Popconfirm
-            title="Delete worker?"
-            onConfirm={async () => {
-              await deleteItem("workers", r.id);
-              dispatch(deleteWorker(r.id));
+          <ProtectedAction
+            title="Passcode required to delete"
+            onAuthorized={() => {
+              Modal.confirm({
+                title: "Delete worker?",
+                onOk: async () => {
+                  await deleteItem("workers", r.id);
+                  dispatch(deleteWorker(r.id));
+                },
+              });
             }}
           >
             <Button size="small" danger>
               Delete
             </Button>
-          </Popconfirm>
+          </ProtectedAction>
         </Space>
       ),
     },

@@ -5,7 +5,6 @@ import {
   Input,
   InputNumber,
   Modal,
-  Popconfirm,
   Select,
   Space,
   Table,
@@ -15,6 +14,7 @@ import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import PageHeader from "../components/common/PageHeader";
+import ProtectedAction from "../components/common/ProtectedAction";
 import { addItem, deleteItem, updateItem } from "../firebaseService";
 
 import {
@@ -41,23 +41,29 @@ export default function Materials() {
       title: "Action",
       render: (_, r) => (
         <Space>
-          <Button
-            onClick={() => {
+          <ProtectedAction
+            onAuthorized={() => {
               setEdit(r);
               setOpen(true);
             }}
           >
-            Edit
-          </Button>
-          <Popconfirm
-            title="Delete material?"
-            onConfirm={async () => {
-              await deleteItem("materials", r.id);
-              dispatch(deleteMaterial(r.id));
+            <Button>Edit</Button>
+          </ProtectedAction>
+
+          <ProtectedAction
+            title="Passcode required to delete"
+            onAuthorized={() => {
+              Modal.confirm({
+                title: "Delete material?",
+                onOk: async () => {
+                  await deleteItem("materials", r.id);
+                  dispatch(deleteMaterial(r.id));
+                },
+              });
             }}
           >
             <Button danger>Delete</Button>
-          </Popconfirm>
+          </ProtectedAction>
         </Space>
       ),
     },

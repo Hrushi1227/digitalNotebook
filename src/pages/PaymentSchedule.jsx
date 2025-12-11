@@ -4,7 +4,6 @@ import {
   Form,
   InputNumber,
   Modal,
-  Popconfirm,
   Select,
   Table,
   Tag,
@@ -17,6 +16,7 @@ import dayjs from "dayjs";
 import { selectSchedules } from "../store/schedulesSlice";
 import { selectWorkers } from "../store/workersSlice";
 
+import ProtectedAction from "../components/common/ProtectedAction";
 import { addItem, deleteItem, updateItem } from "../firebaseService";
 
 export default function PaymentSchedule() {
@@ -53,24 +53,30 @@ export default function PaymentSchedule() {
       title: "Actions",
       render: (_, r) => (
         <div className="flex gap-2">
-          <Button
-            size="small"
-            onClick={() => {
+          <ProtectedAction
+            onAuthorized={() => {
               setEdit(r);
               setOpen(true);
             }}
           >
-            Edit
-          </Button>
+            <Button size="small">Edit</Button>
+          </ProtectedAction>
 
-          <Popconfirm
-            title="Delete schedule?"
-            onConfirm={() => deleteItem("schedules", r.id)}
+          <ProtectedAction
+            title="Passcode required to delete"
+            onAuthorized={() => {
+              Modal.confirm({
+                title: "Delete schedule?",
+                onOk: async () => {
+                  await deleteItem("schedules", r.id);
+                },
+              });
+            }}
           >
             <Button size="small" danger>
               Delete
             </Button>
-          </Popconfirm>
+          </ProtectedAction>
 
           {r.status === "pending" && (
             <Button

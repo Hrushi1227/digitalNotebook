@@ -6,7 +6,6 @@ import {
   Input,
   InputNumber,
   Modal,
-  Popconfirm,
   Space,
   Table,
   Tag,
@@ -19,6 +18,7 @@ import { selectPayments } from "../store/paymentsSlice";
 import { selectTasks } from "../store/tasksSlice";
 import { selectWorkers } from "../store/workersSlice";
 
+import ProtectedAction from "../components/common/ProtectedAction";
 import { deleteItem, updateItem } from "../firebaseService";
 
 export default function WorkerDetails() {
@@ -87,19 +87,24 @@ export default function WorkerDetails() {
       <Space className="mb-4">
         <Button onClick={() => navigate("/workers")}>Back</Button>
 
-        <Button type="primary" onClick={() => setOpen(true)}>
-          Edit Worker
-        </Button>
+        <ProtectedAction onAuthorized={() => setOpen(true)}>
+          <Button type="primary">Edit Worker</Button>
+        </ProtectedAction>
 
-        <Popconfirm
-          title="Delete worker?"
-          onConfirm={() => {
-            deleteItem("workers", id);
-            navigate("/workers");
+        <ProtectedAction
+          title="Passcode required to delete"
+          onAuthorized={() => {
+            Modal.confirm({
+              title: "Delete worker?",
+              onOk: async () => {
+                await deleteItem("workers", id);
+                navigate("/workers");
+              },
+            });
           }}
         >
           <Button danger>Delete</Button>
-        </Popconfirm>
+        </ProtectedAction>
       </Space>
 
       {/* Worker Details */}

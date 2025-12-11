@@ -7,7 +7,6 @@ import {
   Input,
   InputNumber,
   Modal,
-  Popconfirm,
   Row,
   Statistic,
   Table,
@@ -18,6 +17,7 @@ import { useSelector } from "react-redux";
 
 import dayjs from "dayjs";
 
+import ProtectedAction from "../components/common/ProtectedAction";
 import { addItem, deleteItem } from "../firebaseService";
 import { selectLedger } from "../store/ledgerSlice";
 
@@ -58,14 +58,21 @@ export default function Ledger() {
     {
       title: "Action",
       render: (_, r) => (
-        <Popconfirm
-          title="Delete entry?"
-          onConfirm={() => deleteItem("ledger", r.id)}
+        <ProtectedAction
+          title="Passcode required to delete"
+          onAuthorized={() => {
+            Modal.confirm({
+              title: "Delete entry?",
+              onOk: async () => {
+                await deleteItem("ledger", r.id);
+              },
+            });
+          }}
         >
           <Button danger size="small">
             Delete
           </Button>
-        </Popconfirm>
+        </ProtectedAction>
       ),
     },
   ];

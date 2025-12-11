@@ -6,7 +6,6 @@ import {
   Input,
   InputNumber,
   Modal,
-  Popconfirm,
   Table,
   Upload,
 } from "antd";
@@ -15,6 +14,7 @@ import { useSelector } from "react-redux";
 
 import dayjs from "dayjs";
 
+import ProtectedAction from "../components/common/ProtectedAction";
 import { addItem, deleteItem } from "../firebaseService";
 import { selectInvoices } from "../store/invoicesSlice";
 
@@ -39,14 +39,21 @@ export default function Invoices() {
     {
       title: "Action",
       render: (_, r) => (
-        <Popconfirm
-          title="Delete invoice?"
-          onConfirm={() => deleteItem("invoices", r.id)}
+        <ProtectedAction
+          title="Passcode required to delete"
+          onAuthorized={() => {
+            Modal.confirm({
+              title: "Delete invoice?",
+              onOk: async () => {
+                await deleteItem("invoices", r.id);
+              },
+            });
+          }}
         >
           <Button danger size="small">
             Delete
           </Button>
-        </Popconfirm>
+        </ProtectedAction>
       ),
     },
   ];

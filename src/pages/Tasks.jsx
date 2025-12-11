@@ -4,7 +4,6 @@ import {
   Form,
   Input,
   Modal,
-  Popconfirm,
   Select,
   Table,
   Tag,
@@ -22,6 +21,7 @@ import {
 } from "../store/tasksSlice";
 import { selectWorkers } from "../store/workersSlice";
 
+import ProtectedAction from "../components/common/ProtectedAction";
 import { addItem, deleteItem, updateItem } from "../firebaseService";
 
 export default function Tasks() {
@@ -57,27 +57,31 @@ export default function Tasks() {
       title: "Actions",
       render: (_, r) => (
         <div className="flex gap-2">
-          <Button
-            size="small"
-            onClick={() => {
+          <ProtectedAction
+            onAuthorized={() => {
               setEdit(r);
               setOpen(true);
             }}
           >
-            Edit
-          </Button>
+            <Button size="small">Edit</Button>
+          </ProtectedAction>
 
-          <Popconfirm
-            title="Delete task?"
-            onConfirm={async () => {
-              await deleteItem("tasks", r.id);
-              dispatch(deleteTask(r.id));
+          <ProtectedAction
+            title="Passcode required to delete"
+            onAuthorized={() => {
+              Modal.confirm({
+                title: "Delete task?",
+                onOk: async () => {
+                  await deleteItem("tasks", r.id);
+                  dispatch(deleteTask(r.id));
+                },
+              });
             }}
           >
             <Button danger size="small">
               Delete
             </Button>
-          </Popconfirm>
+          </ProtectedAction>
 
           {r.status === "pending" && (
             <Button

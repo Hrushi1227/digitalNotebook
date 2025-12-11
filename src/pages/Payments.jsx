@@ -4,7 +4,6 @@ import {
   Form,
   InputNumber,
   Modal,
-  Popconfirm,
   Select,
   Table,
 } from "antd";
@@ -20,6 +19,7 @@ import {
 } from "../store/paymentsSlice";
 import { selectWorkers } from "../store/workersSlice";
 
+import ProtectedAction from "../components/common/ProtectedAction";
 import { addItem, deleteItem } from "../firebaseService";
 
 export default function Payments() {
@@ -45,17 +45,22 @@ export default function Payments() {
     {
       title: "Action",
       render: (_, r) => (
-        <Popconfirm
-          title="Delete payment?"
-          onConfirm={async () => {
-            await deleteItem("payments", r.id);
-            dispatch(deletePayment(r.id));
+        <ProtectedAction
+          title="Passcode required to delete"
+          onAuthorized={() => {
+            Modal.confirm({
+              title: "Delete payment?",
+              onOk: async () => {
+                await deleteItem("payments", r.id);
+                dispatch(deletePayment(r.id));
+              },
+            });
           }}
         >
           <Button danger size="small">
             Delete
           </Button>
-        </Popconfirm>
+        </ProtectedAction>
       ),
     },
   ];
