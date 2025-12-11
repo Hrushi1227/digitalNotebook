@@ -33,3 +33,46 @@ body,
     z-index: 1000;
   }
 }
+
+/* Make AntD tables responsive on small screens */
+.ant-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.ant-table-wrapper table {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Allow table cells to wrap instead of forcing horizontal scroll */
+.ant-table-cell,
+.ant-table-thead > tr > th,
+.ant-table-tbody > tr > td {
+  white-space: normal !important;
+  word-break: break-word;
+}
+
+/* Ensure drawer content never exceeds viewport */
+.ant-drawer-content-wrapper {
+  max-width: 100% !important;
+}
+
+@media (max-width: 640px) {
+  .max-w-7xl {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  .ant-layout-header {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* Slightly reduce table padding for small screens */
+  .ant-table-thead > tr > th,
+  .ant-table-tbody > tr > td {
+    padding: 8px;
+  }
+}
