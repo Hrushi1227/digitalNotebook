@@ -1,6 +1,8 @@
 import { Card, Col, Row, Statistic, Table, Tag } from "antd";
 import { useSelector } from "react-redux";
 
+import { useEffect } from "react";
+import { addItem } from "../firebaseService";
 import { selectBudgets } from "../store/budgetsSlice";
 import { selectInvoices } from "../store/invoicesSlice";
 import { selectLedger } from "../store/ledgerSlice";
@@ -71,6 +73,10 @@ export default function Dashboard() {
         ),
     },
   ];
+
+  useEffect(() => {
+    addItem("testConnect", { test: true });
+  }, []);
 
   return (
     <div className="p-2">
