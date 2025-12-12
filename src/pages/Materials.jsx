@@ -30,7 +30,6 @@ export default function Materials() {
   const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
-  const [autoOpen, setAutoOpen] = useState(false);
 
   // Load comprehensive equipment list from data file (users can still type custom names)
   // equipmentList.json contains categories with an `items` array each.
@@ -148,8 +147,7 @@ export default function Materials() {
                 option.value.toLowerCase().includes(inputValue.toLowerCase())
               }
               allowClear
-              open={autoOpen}
-              onDropdownVisibleChange={(visible) => setAutoOpen(visible)}
+              notFoundContent={null}
             />
           </Form.Item>
 

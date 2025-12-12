@@ -21,6 +21,7 @@ export default function Workers() {
 
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
+  const [form] = Form.useForm();
 
   const columns = [
     {
@@ -94,38 +95,24 @@ export default function Workers() {
         onCancel={() => {
           setOpen(false);
           setEdit(null);
+          form.resetFields();
         }}
         onOk={() => document.getElementById("workerSubmitBtn").click()}
       >
         <Form
+          form={form}
           layout="vertical"
-          initialValues={
-            edit
-              ? {
-                  name: edit.name,
-                  phone: edit.phone,
-                  profession: edit.profession,
-                  rate: edit.rate,
-                }
-              : {}
-          }
           onFinish={async (vals) => {
             if (edit) {
               await updateItem("workers", edit.id, vals);
               dispatch(updateWorker({ id: edit.id, ...vals }));
             } else {
-              const res = await addItem("workers", {
-                name: vals.name,
-                phone: vals.phone,
-                profession: vals.profession,
-                rate: vals.rate || 0,
-              });
-              dispatch(
-                addWorker({ id: res.id, ...vals, rate: vals.rate || 0 })
-              );
+              const res = await addItem("workers", vals);
+              dispatch(addWorker({ id: res.id, ...vals }));
             }
             setOpen(false);
             setEdit(null);
+            form.resetFields();
           }}
         >
           <Form.Item name="name" label="Name" rules={[{ required: true }]}>
@@ -141,8 +128,8 @@ export default function Workers() {
           </Form.Item>
 
           <Form.Item
-            name="amount"
-            label="Payment Amount (₹)"
+            name="rate"
+            label="Rate (₹/day)"
             rules={[{ required: true }]}
           >
             <InputNumber className="w-full" min={0} />
