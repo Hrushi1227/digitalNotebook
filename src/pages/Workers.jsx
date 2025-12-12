@@ -140,7 +140,11 @@ export default function Workers() {
             <Input placeholder="Electrician, POP, Carpenter etc." />
           </Form.Item>
 
-          <Form.Item name="rate" label="Daily Rate (₹)">
+          <Form.Item
+            name="amount"
+            label="Payment Amount (₹)"
+            rules={[{ required: true }]}
+          >
             <InputNumber className="w-full" min={0} />
           </Form.Item>
 

@@ -508,10 +508,17 @@ export default function WorkerPortal() {
                   summary={() => (
                     <Table.Summary>
                       <Table.Summary.Row>
-                        <Table.Summary.Cell index={0} colSpan={2} style={{ textAlign: "right", fontWeight: 700 }}>
+                        <Table.Summary.Cell
+                          index={0}
+                          colSpan={2}
+                          style={{ textAlign: "right", fontWeight: 700 }}
+                        >
                           Total Paid
                         </Table.Summary.Cell>
-                        <Table.Summary.Cell index={2} style={{ fontWeight: 700 }}>
+                        <Table.Summary.Cell
+                          index={2}
+                          style={{ fontWeight: 700 }}
+                        >
                           ₹{totalEarned}
                         </Table.Summary.Cell>
                       </Table.Summary.Row>

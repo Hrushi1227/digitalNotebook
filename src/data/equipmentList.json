@@ -1,0 +1,267 @@
+[
+  {
+    "category": "POP / False Ceiling",
+    "items": [
+      "POP Powder",
+      "Gypsum Board",
+      "Channel (Ceiling Section)",
+      "Perimeter Channel",
+      "Intermediate Channel",
+      "Ceiling Angles",
+      "Drywall Screws",
+      "Jointing Compound",
+      "Joint Tape",
+      "Corner Beads",
+      "POP Mesh Tape",
+      "Laser Level",
+      "Cutting Knife",
+      "Putty Blade",
+      "Sandpaper",
+      "Fiber Tape",
+      "False Ceiling Light Panel",
+      "POP Moldings",
+      "Cornice",
+      "POP Primer"
+    ]
+  },
+  {
+    "category": "Carpenter / Furniture Work",
+    "items": [
+      "Plywood (19mm)",
+      "Plywood (12mm)",
+      "Blockboard",
+      "MDF Board",
+      "Laminates",
+      "Veneer Sheets",
+      "Wood Adhesive (Fevicol)",
+      "Edge Band",
+      "Edge Band Trimmer",
+      "Drawer Channels",
+      "Soft Close Hinges",
+      "Hydraulic Hinges",
+      "Telescopic Channels",
+      "Wardrobe Rod",
+      "Wardrobe Sliding Fittings",
+      "PVC Edge Tape",
+      "Handles & Knobs",
+      "Screws (Various Sizes)",
+      "Fevicol Heatx",
+      "Wood Polish",
+      "PU Polish",
+      "Acrylic Sheet",
+      "Glass Shelf Brackets",
+      "Door Stoppers",
+      "Magnetic Catchers",
+      "Furniture Feet",
+      "Nails",
+      "Wood Filler",
+      "Masking Tape",
+      "Circular Saw",
+      "Jigsaw",
+      "Drill Machine"
+    ]
+  },
+  {
+    "category": "Electrician",
+    "items": [
+      "Electrical Wire (Finolex/Polycab)",
+      "Switches",
+      "Sockets",
+      "MCB",
+      "Distribution Board",
+      "Conduits",
+      "Conduit Bends",
+      "PVC Box",
+      "Cable Tie",
+      "LED Lights",
+      "Panel Lights",
+      "Tube Light",
+      "Ceiling Fan",
+      "Exhaust Fan",
+      "Door Bell",
+      "Switch Plate",
+      "Junction Box",
+      "Tape (Electrical)",
+      "Circuit Tester",
+      "Multi Meter",
+      "Stabilizer",
+      "UPS / Inverter",
+      "Battery",
+      "WIFI Router",
+      "Smart Switches",
+      "Smart Bulbs"
+    ]
+  },
+  {
+    "category": "Plumbing",
+    "items": [
+      "PVC Pipe",
+      "CPVC Pipe",
+      "UPVC Pipe",
+      "GI Pipe",
+      "Taps",
+      "Mixer Tap",
+      "Angle Valve",
+      "Shower Head",
+      "Shower Mixer",
+      "Wash Basin",
+      "Sink",
+      "Kitchen Sink",
+      "Bathroom Fittings Set",
+      "Waste Pipe",
+      "S-Trap",
+      "P-Trap",
+      "Teflon Tape",
+      "Sealant",
+      "Putty",
+      "Water Tank",
+      "Pressure Pump",
+      "Water Heater (Geyser)"
+    ]
+  },
+  {
+    "category": "Painter",
+    "items": [
+      "Wall Putty",
+      "Primer",
+      "Interior Paint",
+      "Exterior Paint",
+      "Sandpaper",
+      "Roller",
+      "Brush Set",
+      "Masking Tape",
+      "Drop Cloth",
+      "Putty Knife",
+      "Scraper",
+      "Colorants",
+      "Wood Polish",
+      "Enamel Paint",
+      "Distemper"
+    ]
+  },
+  {
+    "category": "Tiles / Civil Work",
+    "items": [
+      "Wall Tiles",
+      "Floor Tiles",
+      "Tile Adhesive",
+      "Tile Spacer",
+      "Grout",
+      "Cement",
+      "Sand",
+      "Aggregates",
+      "Marble",
+      "Granite",
+      "Angle Grinder",
+      "Cutter Blade",
+      "Leveling Compound",
+      "Concrete Mix"
+    ]
+  },
+  {
+    "category": "Ceiling, Fixtures & Lighting",
+    "items": [
+      "Cove Lights",
+      "Spotlight",
+      "Chandelier",
+      "Pendant Light",
+      "False Ceiling LED Strip",
+      "Warm White LED Panel",
+      "Smart Light Strip",
+      "Ceiling Rose"
+    ]
+  },
+  {
+    "category": "Modular Kitchen",
+    "items": [
+      "Hinges",
+      "Tandem Drawer Channels",
+      "Cutlery Tray",
+      "Bottle Pullout",
+      "Corner Unit",
+      "Gas Pipe",
+      "Chimney",
+      "Cooktop",
+      "Sink",
+      "Dish Rack",
+      "Granite Countertop",
+      "Backsplash Glass",
+      "WPC Board",
+      "PVC Board"
+    ]
+  },
+  {
+    "category": "Furniture Items (Ready-Made)",
+    "items": [
+      "Sofa",
+      "Dining Table",
+      "Dining Chair",
+      "Bed",
+      "Mattress",
+      "Wardrobe",
+      "Bookshelf",
+      "Center Table",
+      "Study Table",
+      "Office Chair",
+      "TV Unit",
+      "Dressing Table"
+    ]
+  },
+  {
+    "category": "Home Appliances",
+    "items": [
+      "Refrigerator",
+      "Washing Machine",
+      "Microwave",
+      "Air Fryer",
+      "Water Purifier",
+      "Geyser",
+      "Air Conditioner",
+      "Induction Cooktop",
+      "Mixer Grinder",
+      "Vacuum Cleaner"
+    ]
+  },
+  {
+    "category": "General Tools",
+    "items": [
+      "Hammer",
+      "Screwdriver Set",
+      "Pliers",
+      "Wrench",
+      "Spirit Level",
+      "Tape Measure",
+      "Drill Machine",
+      "Bits Set",
+      "Angle Grinder",
+      "Cutting Blade",
+      "Toolbox",
+      "Ladder"
+    ]
+  },
+  {
+    "category": "Cleaning & Maintenance",
+    "items": [
+      "Broom",
+      "Mop",
+      "Vacuum Cleaner",
+      "Scrub Pad",
+      "Cleaning Cloth",
+      "Toilet Cleaner",
+      "Floor Cleaner",
+      "Glass Cleaner",
+      "Garbage Bags"
+    ]
+  },
+  {
+    "category": "Safety & Security",
+    "items": [
+      "CCTV Camera",
+      "Smoke Detector",
+      "Door Lock",
+      "Smart Lock",
+      "Fire Extinguisher",
+      "Video Door Phone"
+    ]
+  }
+]

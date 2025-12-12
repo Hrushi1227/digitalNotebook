@@ -1,4 +1,5 @@
 import {
+  AutoComplete,
   Button,
   DatePicker,
   Form,
@@ -12,9 +13,9 @@ import {
 import dayjs from "dayjs";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-
 import PageHeader from "../components/common/PageHeader";
 import ProtectedAction from "../components/common/ProtectedAction";
+import equipmentList from "../data/equipmentList.json";
 import { addItem, deleteItem, updateItem } from "../firebaseService";
 
 import {
@@ -29,6 +30,13 @@ export default function Materials() {
   const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
+  const [autoOpen, setAutoOpen] = useState(false);
+
+  // Load comprehensive equipment list from data file (users can still type custom names)
+  // equipmentList.json contains categories with an `items` array each.
+  const equipmentOptions = equipmentList.flatMap((cat) =>
+    Array.isArray(cat.items) ? cat.items.map((item) => ({ value: item })) : []
+  );
 
   const columns = [
     { title: "Name", dataIndex: "name" },
@@ -133,7 +141,16 @@ export default function Materials() {
           }}
         >
           <Form.Item name="name" label="Name" rules={[{ required: true }]}>
-            <Input />
+            <AutoComplete
+              options={equipmentOptions}
+              placeholder="Select or type material"
+              filterOption={(inputValue, option) =>
+                option.value.toLowerCase().includes(inputValue.toLowerCase())
+              }
+              allowClear
+              open={autoOpen}
+              onDropdownVisibleChange={(visible) => setAutoOpen(visible)}
+            />
           </Form.Item>
 
           <Form.Item name="qty" label="Quantity" rules={[{ required: true }]}>
