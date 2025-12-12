@@ -1,4 +1,4 @@
-import { InfoCircleOutlined } from "@ant-design/icons";
+import { InfoCircleOutlined, DownloadOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,
@@ -16,6 +16,8 @@ import {
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import { jsPDF } from "jspdf";
+import html2canvas from "html2canvas";
 import { addItem } from "../firebaseService";
 import { logout, selectWorkerId } from "../store/authSlice";
 import { addMessage, selectWorkerMessages } from "../store/messagesSlice";
@@ -211,6 +213,45 @@ export default function WorkerPortal() {
     navigate("/");
   };
 
+  const downloadPaymentPDF = async () => {
+    try {
+      const element = document.getElementById("payment-history-pdf");
+      if (!element) return;
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+      });
+
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "mm",
+        format: "a4",
+      });
+
+      const imgData = canvas.toDataURL("image/png");
+      const imgWidth = 210;
+      const pageHeight = 295;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      pdf.save(`payment-history-${worker?.name || workerId}.pdf`);
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       {/* Header */}
@@ -398,28 +439,54 @@ export default function WorkerPortal() {
       )}
       {/* Payment History - Only show if worker is registered */}
       {worker ? (
-        <Card title="Your Payment History" className="mb-6">
-          {workerPayments.length > 0 ? (
-            <div style={{ overflowX: "auto" }}>
-              <Table
-                rowKey="id"
-                dataSource={workerPayments}
-                columns={[
-                  {
-                    title: "Amount",
-                    dataIndex: "amount",
-                    render: (v) => `₹${v}`,
-                  },
-                  { title: "Date", dataIndex: "date" },
-                  { title: "Note", dataIndex: "note" },
-                ]}
-                scroll={{ x: "max-content" }}
-                pagination={false}
-              />
+        <Card
+          title="Your Payment History"
+          className="mb-6"
+          extra={
+            <Button
+              type="primary"
+              icon={<DownloadOutlined />}
+              onClick={downloadPaymentPDF}
+              disabled={workerPayments.length === 0}
+            >
+              Download PDF
+            </Button>
+          }
+        >
+          <div id="payment-history-pdf" className="bg-white p-6">
+            {/* PDF Header with Worker Details */}
+            <div className="mb-6 pb-4 border-b-2 border-gray-300">
+              <h2 className="text-2xl font-bold mb-2">{worker.name}</h2>
+              <p className="text-lg text-gray-700">📱 Mobile: {worker.phone}</p>
+              <p className="text-sm text-gray-600">
+                Generated on: {new Date().toLocaleDateString()}
+              </p>
             </div>
-          ) : (
-            <p className="text-gray-500">No payments yet.</p>
-          )}
+
+            {/* Payment Table */}
+            {workerPayments.length > 0 ? (
+              <div style={{ overflowX: "auto" }}>
+                <Table
+                  rowKey="id"
+                  dataSource={workerPayments}
+                  columns={[
+                    {
+                      title: "Amount",
+                      dataIndex: "amount",
+                      render: (v) => `₹${v}`,
+                    },
+                    { title: "Date", dataIndex: "date" },
+                    { title: "Note", dataIndex: "note" },
+                  ]}
+                  scroll={{ x: "max-content" }}
+                  pagination={false}
+                  bordered
+                />
+              </div>
+            ) : (
+              <p className="text-gray-500">No payments yet.</p>
+            )}
+          </div>
         </Card>
       ) : null}
 
