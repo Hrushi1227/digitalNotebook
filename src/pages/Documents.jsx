@@ -2,6 +2,7 @@ import {
   DeleteOutlined,
   DownloadOutlined,
   EyeOutlined,
+  FileExcelOutlined,
   FileImageOutlined,
   FilePdfOutlined,
   FileWordOutlined,
@@ -33,13 +34,20 @@ const ALLOWED_TYPES = [
   "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "image/jpeg",
+  "image/jpg",
   "image/png",
   "image/gif",
   "image/webp",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/csv",
+  "application/octet-stream", // important for Excel
 ];
 
 const getFileIcon = (mimeType) => {
   if (mimeType.startsWith("image/")) return <FileImageOutlined />;
+  if (mimeType.includes("sheet") || mimeType.includes("excel"))
+    return <FileExcelOutlined />;
   if (mimeType === "application/pdf") return <FilePdfOutlined />;
   if (
     mimeType === "application/msword" ||
@@ -57,6 +65,12 @@ const getFileType = (mimeType) => {
     mimeType.includes("wordprocessingml")
   )
     return "Word";
+  if (
+    mimeType.includes("sheet") ||
+    mimeType.includes("excel") ||
+    mimeType === "text/csv"
+  )
+    return "Excel";
   return "Document";
 };
 
@@ -68,8 +82,40 @@ export default function Documents() {
   const [previewDoc, setPreviewDoc] = useState(null);
 
   const handleUpload = async (file) => {
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      message.error("Only PDF, Word, and Image files are allowed");
+    // Get MIME type, with fallback based on file extension
+    let mimeType = file.type;
+    const ext = file.name.split(".").pop()?.toLowerCase();
+
+    // Handle missing or unreliable MIME types (common with Excel files)
+    if (
+      !mimeType ||
+      mimeType === "" ||
+      mimeType === "application/octet-stream"
+    ) {
+      const extMap = {
+        jpg: "image/jpeg",
+        jpeg: "image/jpeg",
+        png: "image/png",
+        gif: "image/gif",
+        webp: "image/webp",
+        pdf: "application/pdf",
+        doc: "application/msword",
+        docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        xls: "application/vnd.ms-excel",
+        xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        csv: "text/csv",
+      };
+
+      mimeType = extMap[ext] || mimeType;
+    }
+
+    if (!ALLOWED_TYPES.includes(mimeType)) {
+      message.error(`File type not allowed. MIME: ${mimeType || "unknown"}`);
+      console.warn("Unsupported file type:", {
+        name: file.name,
+        mimeType,
+        ext,
+      });
       return false;
     }
 
@@ -77,15 +123,32 @@ export default function Documents() {
     try {
       // Create data URL for preview
       const reader = new FileReader();
+      const isExcel =
+        mimeType.includes("sheet") ||
+        mimeType.includes("excel") ||
+        mimeType === "text/csv" ||
+        ["xls", "xlsx", "csv"].includes(ext);
+
       reader.onload = async (e) => {
-        const dataUrl = e.target.result;
+        let dataUrl = null;
+        let previewHtml = null;
+
+        if (isExcel) {
+          const workbook = XLSX.read(e.target.result, { type: "binary" });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          previewHtml = XLSX.utils.sheet_to_html(firstSheet);
+        } else {
+          dataUrl = e.target.result;
+        }
+
         const docPayload = {
           name: file.name,
-          type: file.type,
-          fileType: getFileType(file.type),
+          type: mimeType,
+          fileType: getFileType(mimeType),
           size: file.size,
           uploadedAt: new Date().toISOString(),
-          dataUrl: dataUrl, // Store base64 encoded file
+          dataUrl,
+          previewHtml,
         };
 
         try {
@@ -97,7 +160,9 @@ export default function Documents() {
           console.error(err);
         }
       };
-      reader.readAsDataURL(file);
+
+      if (isExcel) reader.readAsBinaryString(file);
+      else reader.readAsDataURL(file);
     } catch (err) {
       message.error("Upload failed");
       console.error(err);
@@ -209,7 +274,7 @@ export default function Documents() {
 
       <Card className="mb-6">
         <Upload
-          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp"
+          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.xls,.xlsx,.csv"
           beforeUpload={handleUpload}
           multiple={false}
           disabled={uploading}
@@ -220,6 +285,9 @@ export default function Documents() {
         </Upload>
         <p className="text-gray-600 text-sm mt-2">
           Supported: PDF, Word (.doc/.docx), Images (.jpg/.png/.gif/.webp)
+        </p>
+        <p className="text-gray-600 text-sm mt-2">
+          Supported: PDF, Word, Images, Excel (.xls/.xlsx/.csv)
         </p>
       </Card>
 
@@ -250,7 +318,12 @@ export default function Documents() {
       >
         {previewDoc && (
           <div className="bg-gray-100 p-4 rounded">
-            {previewDoc.fileType === "Image" ? (
+            {previewDoc.fileType === "Excel" ? (
+              <div
+                dangerouslySetInnerHTML={{ __html: previewDoc.previewHtml }}
+                style={{ overflowX: "auto", background: "white", padding: 10 }}
+              />
+            ) : previewDoc.fileType === "Image" ? (
               <img
                 src={previewDoc.dataUrl}
                 alt={previewDoc.name}
