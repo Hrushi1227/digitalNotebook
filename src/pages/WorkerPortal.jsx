@@ -13,7 +13,7 @@ import {
   Tag,
   Timeline,
 } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { addItem } from "../firebaseService";
@@ -29,18 +29,95 @@ export default function WorkerPortal() {
   const dispatch = useDispatch();
   const payments = useSelector(selectPayments);
   const tasks = useSelector(selectTasks);
-  const workers = useSelector(selectWorkers);
+  const workersData = useSelector(selectWorkers);
+  const workers = Array.isArray(workersData) ? workersData : [];
   const messages = useSelector((s) => selectWorkerMessages(s, workerId));
 
   const [messageText, setMessageText] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
 
-  const worker = workers.find((w) => w.id === workerId || w.name === workerId);
+  // Track when data is loaded from Firestore
+  useEffect(() => {
+    if (workers && workers.length > 0) {
+      setDataLoaded(true);
+    }
+  }, [workers]);
+
+  // Debug: Log data when it loads
+  useEffect(() => {
+    console.log("=== WorkerPortal Debug ===");
+    console.log("workerId (input):", workerId);
+    console.log("workers count:", workers?.length);
+    console.log("workers data:", workers);
+
+    if (workers && workers.length > 0) {
+      console.log(
+        "Worker names available:",
+        workers.map((w) => w.name)
+      );
+      workers.forEach((w) => {
+        const nameMatch = w.name?.toLowerCase() === workerId?.toLowerCase();
+        const idMatch = w.id?.toLowerCase() === workerId?.toLowerCase();
+        const phoneMatch = w.phone?.toLowerCase() === workerId?.toLowerCase();
+        console.log(
+          `Worker: "${w.name}" | ID: "${w.id}" | Phone: "${w.phone}"`
+        );
+        console.log(
+          `  Name match (${w.name?.toLowerCase()} === ${workerId?.toLowerCase()}): ${nameMatch}`
+        );
+        console.log(`  ID match: ${idMatch}`);
+        console.log(`  Phone match: ${phoneMatch}`);
+      });
+    }
+  }, [workerId, workers]);
+
+  // Find worker with case-insensitive matching - more explicit
+  let worker = null;
+  if (workers && workers.length > 0) {
+    for (const w of workers) {
+      const wName = (w?.name || "").trim().toLowerCase();
+      const wId = (w?.id || "").trim().toLowerCase();
+      const wPhone = (w?.phone || "").trim().toLowerCase();
+      const inputId = (workerId || "").trim().toLowerCase();
+
+      if (wName === inputId || wId === inputId || wPhone === inputId) {
+        worker = w;
+        console.log(
+          "✓ MATCH FOUND:",
+          w.name,
+          "| Matched by:",
+          wName === inputId ? "Name" : wId === inputId ? "ID" : "Phone"
+        );
+        break;
+      }
+    }
+  }
+
+  if (!worker) {
+    console.log(
+      "✗ NO MATCH - Input:",
+      workerId,
+      "Available:",
+      workers?.map((w) => w.name)
+    );
+  }
+
+  // Use worker's actual ID from database for filtering
+  const actualWorkerId = worker?.id;
+
   const workerPayments = payments.filter(
-    (p) => p.workerId === workerId || p.workerId === worker?.id
+    (p) =>
+      p.workerId?.toLowerCase() === workerId?.toLowerCase() ||
+      (actualWorkerId &&
+        p.workerId?.toLowerCase() === actualWorkerId?.toLowerCase())
   );
+
   const workerTasks = tasks.filter(
-    (t) => t.workerId === workerId || t.workerId === worker?.id
+    (t) =>
+      t.workerId?.toLowerCase() === workerId?.toLowerCase() ||
+      (actualWorkerId &&
+        t.workerId?.toLowerCase() === actualWorkerId?.toLowerCase())
   );
   const completedTasks = workerTasks.filter(
     (t) => t.status === "completed"
@@ -154,186 +231,277 @@ export default function WorkerPortal() {
         </Space>
       </div>
 
-      {/* Stats */}
-      <Row gutter={[16, 16]} className="mb-6">
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic
-              title="Total Earned"
-              value={totalEarned}
-              prefix="₹"
-              valueStyle={{ color: "#52c41a" }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic
-              title="Tasks Assigned"
-              value={workerTasks.length}
-              valueStyle={{ color: "#1890ff" }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={8}>
-          <Card>
-            <Statistic
-              title="Tasks Completed"
-              value={completedTasks}
-              suffix={`/ ${workerTasks.length}`}
-              valueStyle={{ color: "#faad14" }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      {/* Worker Profile Card - Only show if worker is registered */}
+      {worker && (
+        <Card className="mb-6 bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-bold text-blue-900 mb-2">
+                {worker.name}
+              </h2>
+              <p className="text-blue-800 text-lg">
+                📱 <span className="font-semibold">{worker.phone}</span>
+              </p>
+              {worker.profession && (
+                <p className="text-blue-700 mt-1">Role: {worker.profession}</p>
+              )}
+            </div>
+            <div className="text-right">
+              <p className="text-sm text-blue-600">Worker ID</p>
+              <p className="text-lg font-mono font-bold text-blue-900">
+                {worker.id}
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
 
-      {/* Changes/Updates Report */}
-      <Card
-        title={
-          <Space>
-            <span>Recent Changes & Updates</span>
-            <Popover
-              content="Shows recent updates to your tasks and payments made by the owner"
-              title="What is this?"
-              trigger="hover"
-            >
-              <InfoCircleOutlined
-                style={{ cursor: "pointer", color: "#1890ff" }}
+      {/* Stats - Only show if worker is registered */}
+      {worker && (
+        <Row gutter={[16, 16]} className="mb-6">
+          <Col xs={24} md={8}>
+            <Card>
+              <Statistic
+                title="Total Earned"
+                value={totalEarned}
+                prefix="₹"
+                valueStyle={{ color: "#52c41a" }}
               />
-            </Popover>
-          </Space>
-        }
-        className="mb-6"
-      >
-        {changesReport.length > 0 ? (
-          <Timeline
-            items={changesReport.map((change) => ({
-              color:
-                change.type === "task"
-                  ? "#1890ff"
-                  : change.type === "payment"
-                  ? "#52c41a"
-                  : "gray",
-              children: (
-                <div>
-                  <p className="font-semibold text-gray-800">{change.action}</p>
-                  <p className="text-gray-600 text-sm">{change.description}</p>
-                  <p className="text-gray-400 text-xs mt-1">
-                    {change.date.toLocaleDateString()} (
-                    {change.daysAgo === 0
-                      ? "Today"
-                      : change.daysAgo === 1
-                      ? "Yesterday"
-                      : `${change.daysAgo} days ago`}
-                    )
-                  </p>
-                </div>
-              ),
-            }))}
-          />
-        ) : (
-          <Empty
-            description="No recent changes"
-            style={{ marginTop: 40, marginBottom: 40 }}
-          />
-        )}
-      </Card>
-      <Card title="Your Payment History" className="mb-6">
-        {workerPayments.length > 0 ? (
-          <div style={{ overflowX: "auto" }}>
-            <Table
-              rowKey="id"
-              dataSource={workerPayments}
-              columns={[
-                {
-                  title: "Amount",
-                  dataIndex: "amount",
-                  render: (v) => `₹${v}`,
-                },
-                { title: "Date", dataIndex: "date" },
-                { title: "Note", dataIndex: "note" },
-              ]}
-              scroll={{ x: "max-content" }}
-              pagination={false}
-            />
-          </div>
-        ) : (
-          <p className="text-gray-500">No payments yet.</p>
-        )}
-      </Card>
+            </Card>
+          </Col>
+          <Col xs={24} md={8}>
+            <Card>
+              <Statistic
+                title="Tasks Assigned"
+                value={workerTasks.length}
+                valueStyle={{ color: "#1890ff" }}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} md={8}>
+            <Card>
+              <Statistic
+                title="Tasks Completed"
+                value={completedTasks}
+                suffix={`/ ${workerTasks.length}`}
+                valueStyle={{ color: "#faad14" }}
+              />
+            </Card>
+          </Col>
+        </Row>
+      )}
 
-      {/* Tasks */}
-      <Card title="Your Tasks" className="mb-6">
-        {workerTasks.length > 0 ? (
-          <div style={{ overflowX: "auto" }}>
-            <Table
-              rowKey="id"
-              dataSource={workerTasks}
-              columns={[
-                { title: "Task", dataIndex: "title" },
-                {
-                  title: "Status",
-                  dataIndex: "status",
-                  render: (s) =>
-                    s === "completed" ? (
-                      <Tag color="green">Completed</Tag>
-                    ) : (
-                      <Tag color="orange">Pending</Tag>
-                    ),
-                },
-                { title: "Deadline", dataIndex: "deadline" },
-              ]}
-              scroll={{ x: "max-content" }}
-              pagination={false}
-            />
-          </div>
-        ) : (
-          <p className="text-gray-500">No tasks assigned yet.</p>
-        )}
-      </Card>
-
-      {/* Messages */}
-      <Card title="Messages to Owner">
-        <div className="mb-4 max-h-96 overflow-y-auto border rounded p-3 bg-gray-50">
-          {messages.length > 0 ? (
-            messages.map((msg) => (
-              <div key={msg.id} className="mb-3 pb-3 border-b last:border-b-0">
-                <p className="text-xs text-gray-500">
-                  {new Date(msg.timestamp).toLocaleDateString()}
-                </p>
-                <p className="text-sm">{msg.message}</p>
-                {msg.reply && (
-                  <div className="mt-2 p-2 bg-blue-50 rounded border-l-4 border-blue-400">
-                    <p className="text-xs font-semibold text-blue-800">
-                      Owner's Reply:
+      {/* Changes/Updates Report - Only show if worker is registered */}
+      {worker ? (
+        <Card
+          title={
+            <Space>
+              <span>Recent Changes & Updates</span>
+              <Popover
+                content="Shows recent updates to your tasks and payments made by the owner"
+                title="What is this?"
+                trigger="hover"
+              >
+                <InfoCircleOutlined
+                  style={{ cursor: "pointer", color: "#1890ff" }}
+                />
+              </Popover>
+            </Space>
+          }
+          className="mb-6"
+        >
+          {changesReport.length > 0 ? (
+            <Timeline
+              items={changesReport.map((change) => ({
+                color:
+                  change.type === "task"
+                    ? "#1890ff"
+                    : change.type === "payment"
+                    ? "#52c41a"
+                    : "gray",
+                children: (
+                  <div>
+                    <p className="font-semibold text-gray-800">
+                      {change.action}
                     </p>
-                    <p className="text-sm text-blue-900">{msg.reply}</p>
+                    <p className="text-gray-600 text-sm">
+                      {change.description}
+                    </p>
+                    <p className="text-gray-400 text-xs mt-1">
+                      {change.date.toLocaleDateString()} (
+                      {change.daysAgo === 0
+                        ? "Today"
+                        : change.daysAgo === 1
+                        ? "Yesterday"
+                        : `${change.daysAgo} days ago`}
+                      )
+                    </p>
                   </div>
-                )}
-              </div>
-            ))
+                ),
+              }))}
+            />
           ) : (
-            <p className="text-gray-500 text-sm">No messages yet.</p>
+            <Empty
+              description="No recent changes"
+              style={{ marginTop: 40, marginBottom: 40 }}
+            />
           )}
-        </div>
-
-        <Space.Compact style={{ width: "100%" }} className="flex">
-          <Input
-            placeholder="Send a message to the owner..."
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            onPressEnter={handleSendMessage}
-            disabled={sendingMessage}
-          />
-          <Button
-            type="primary"
-            onClick={handleSendMessage}
-            loading={sendingMessage}
+        </Card>
+      ) : (
+        <Card className="mb-6 border-orange-200 bg-orange-50">
+          <Empty
+            description="Worker Profile Not Found"
+            style={{ marginTop: 40, marginBottom: 40 }}
           >
-            Send
-          </Button>
-        </Space.Compact>
-      </Card>
+            <p className="text-orange-700 text-center font-semibold">
+              Your worker ID "{workerId}" is not registered in the admin system.
+            </p>
+            <p className="text-orange-600 text-center text-sm mt-2">
+              The system matches your login ID with the worker NAME from the
+              admin's Workers list.
+            </p>
+
+            {workers && workers.length > 0 ? (
+              <div className="mt-6 p-4 bg-white rounded border border-orange-300">
+                <p className="text-orange-800 font-semibold text-center mb-3">
+                  Login with Name or Phone Number:
+                </p>
+                <div className="space-y-2">
+                  {workers.map((w) => (
+                    <div
+                      key={w.id}
+                      className="bg-orange-50 p-3 rounded border border-orange-200 text-center"
+                    >
+                      <div className="text-orange-900 font-medium">
+                        {w.name}
+                      </div>
+                      {w.phone && (
+                        <div className="text-orange-700 text-sm">
+                          📱 {w.phone}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <p className="text-orange-600 text-xs text-center mt-3">
+                  Use the name or phone number above to login
+                </p>
+              </div>
+            ) : (
+              <p className="text-orange-600 text-center text-sm mt-3">
+                No workers registered yet. Please ask the owner to add you to
+                the workers list.
+              </p>
+            )}
+          </Empty>
+        </Card>
+      )}
+      {/* Payment History - Only show if worker is registered */}
+      {worker ? (
+        <Card title="Your Payment History" className="mb-6">
+          {workerPayments.length > 0 ? (
+            <div style={{ overflowX: "auto" }}>
+              <Table
+                rowKey="id"
+                dataSource={workerPayments}
+                columns={[
+                  {
+                    title: "Amount",
+                    dataIndex: "amount",
+                    render: (v) => `₹${v}`,
+                  },
+                  { title: "Date", dataIndex: "date" },
+                  { title: "Note", dataIndex: "note" },
+                ]}
+                scroll={{ x: "max-content" }}
+                pagination={false}
+              />
+            </div>
+          ) : (
+            <p className="text-gray-500">No payments yet.</p>
+          )}
+        </Card>
+      ) : null}
+
+      {/* Tasks - Only show if worker is registered */}
+      {worker ? (
+        <Card title="Your Tasks" className="mb-6">
+          {workerTasks.length > 0 ? (
+            <div style={{ overflowX: "auto" }}>
+              <Table
+                rowKey="id"
+                dataSource={workerTasks}
+                columns={[
+                  { title: "Task", dataIndex: "title" },
+                  {
+                    title: "Status",
+                    dataIndex: "status",
+                    render: (s) =>
+                      s === "completed" ? (
+                        <Tag color="green">Completed</Tag>
+                      ) : (
+                        <Tag color="orange">Pending</Tag>
+                      ),
+                  },
+                  { title: "Deadline", dataIndex: "deadline" },
+                ]}
+                scroll={{ x: "max-content" }}
+                pagination={false}
+              />
+            </div>
+          ) : (
+            <p className="text-gray-500">No tasks assigned yet.</p>
+          )}
+        </Card>
+      ) : null}
+
+      {/* Messages - Only show if worker is registered */}
+      {worker ? (
+        <Card title="Messages to Owner">
+          <div className="mb-4 max-h-96 overflow-y-auto border rounded p-3 bg-gray-50">
+            {messages.length > 0 ? (
+              messages.map((msg) => (
+                <div
+                  key={msg.id}
+                  className="mb-3 pb-3 border-b last:border-b-0"
+                >
+                  <p className="text-xs text-gray-500">
+                    {new Date(msg.timestamp).toLocaleDateString()}
+                  </p>
+                  <p className="text-sm">{msg.message}</p>
+                  {msg.reply && (
+                    <div className="mt-2 p-2 bg-blue-50 rounded border-l-4 border-blue-400">
+                      <p className="text-xs font-semibold text-blue-800">
+                        Owner's Reply:
+                      </p>
+                      <p className="text-sm text-blue-900">{msg.reply}</p>
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <p className="text-gray-500 text-sm">No messages yet.</p>
+            )}
+          </div>
+
+          <Space.Compact style={{ width: "100%" }} className="flex">
+            <Input
+              placeholder="Send a message to the owner..."
+              value={messageText}
+              onChange={(e) => setMessageText(e.target.value)}
+              onPressEnter={handleSendMessage}
+              disabled={sendingMessage}
+            />
+            <Button
+              type="primary"
+              onClick={handleSendMessage}
+              loading={sendingMessage}
+            >
+              Send
+            </Button>
+          </Space.Compact>
+        </Card>
+      ) : null}
     </div>
   );
 }
