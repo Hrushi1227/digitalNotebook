@@ -20,6 +20,7 @@ import {
 } from "antd";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import * as XLSX from "xlsx";
 import PageHeader from "../components/common/PageHeader";
 import ProtectedAction from "../components/common/ProtectedAction";
 import { addItem, deleteItem } from "../firebaseService";
@@ -74,14 +75,73 @@ const getFileType = (mimeType) => {
   return "Document";
 };
 
+// Apply basic styling to Excel HTML preview
+const styleExcelHtml = (html) =>
+  `
+  <style>
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: left; }
+    th { font-weight: 700; background: #f8fafc; }
+    tr:nth-child(even) { background: #f9fafb; }
+  </style>
+  ${html}
+`;
+
+// Convert first sheet to headers + rows (array-of-objects) for Firestore-safe storage/render
+const parseExcelSheet = (sheet, maxRows = 100) => {
+  const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true });
+  if (!rows.length) return { headers: [], rows: [] };
+
+  const headers = rows[0].map((cell, idx) =>
+    cell && cell.toString().trim() !== ""
+      ? cell.toString()
+      : `Column ${idx + 1}`
+  );
+
+  const dataRows = rows.slice(1, maxRows + 1).map((row) => {
+    const record = {};
+    headers.forEach((_, idx) => {
+      const val = row?.[idx];
+      record[`col_${idx}`] =
+        val === undefined || val === null ? "" : val.toString();
+    });
+    return record;
+  });
+
+  return { headers, rows: dataRows };
+};
+
 export default function Documents() {
   const documents = useSelector(selectDocuments);
   const dispatch = useDispatch();
   const [uploading, setUploading] = useState(false);
+  const [uploadingCount, setUploadingCount] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewDoc, setPreviewDoc] = useState(null);
+  const [processingFiles, setProcessingFiles] = useState(new Set());
 
   const handleUpload = async (file) => {
+    // Prevent duplicate uploads - check if file is already being processed
+    const fileKey = `${file.name}_${file.size}_${file.lastModified}`;
+    if (processingFiles.has(fileKey)) {
+      return false; // Already processing this file
+    }
+
+    // Check file size (Firebase Firestore has 1MB limit per document)
+    // For Excel files, we store as base64 which increases size by ~33%
+    const MAX_FILE_SIZE = 900 * 1024; // 900KB to be a bit more lenient
+    if (file.size > MAX_FILE_SIZE) {
+      message.error(
+        `File too large: ${file.name}. Maximum size is ${(
+          MAX_FILE_SIZE / 1024
+        ).toFixed(0)}KB.`
+      );
+      return false;
+    }
+
+    // Mark file as being processed
+    setProcessingFiles((prev) => new Set(prev).add(fileKey));
+
     // Get MIME type, with fallback based on file extension
     let mimeType = file.type;
     const ext = file.name.split(".").pop()?.toLowerCase();
@@ -110,7 +170,7 @@ export default function Documents() {
     }
 
     if (!ALLOWED_TYPES.includes(mimeType)) {
-      message.error(`File type not allowed. MIME: ${mimeType || "unknown"}`);
+      message.error(`File type not allowed: ${file.name}`);
       console.warn("Unsupported file type:", {
         name: file.name,
         mimeType,
@@ -119,6 +179,8 @@ export default function Documents() {
       return false;
     }
 
+    // Increment upload counter for multiple file support
+    setUploadingCount((prev) => prev + 1);
     setUploading(true);
     try {
       // Create data URL for preview
@@ -132,11 +194,40 @@ export default function Documents() {
       reader.onload = async (e) => {
         let dataUrl = null;
         let previewHtml = null;
+        let previewTableHeaders = [];
+        let previewTableRows = [];
 
         if (isExcel) {
-          const workbook = XLSX.read(e.target.result, { type: "binary" });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          previewHtml = XLSX.utils.sheet_to_html(firstSheet);
+          try {
+            const workbook = XLSX.read(e.target.result, { type: "binary" });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            // We prefer AntD table preview; drop the bulky HTML to keep payload small
+            previewHtml = null;
+            const { headers, rows } = parseExcelSheet(firstSheet);
+            previewTableHeaders = headers;
+            previewTableRows = rows;
+            // Store Excel file as base64 for download
+            const binaryString = e.target.result;
+            let binary = "";
+            for (let i = 0; i < binaryString.length; i++) {
+              binary += String.fromCharCode(binaryString.charCodeAt(i) & 0xff);
+            }
+            dataUrl = "data:" + mimeType + ";base64," + btoa(binary);
+          } catch (excelErr) {
+            console.error("Error processing Excel file:", excelErr);
+            message.error(`Failed to process Excel file: ${file.name}`);
+            setProcessingFiles((prev) => {
+              const next = new Set(prev);
+              next.delete(fileKey);
+              return next;
+            });
+            setUploadingCount((prev) => {
+              const newCount = prev - 1;
+              if (newCount === 0) setUploading(false);
+              return newCount;
+            });
+            return;
+          }
         } else {
           dataUrl = e.target.result;
         }
@@ -149,6 +240,8 @@ export default function Documents() {
           uploadedAt: new Date().toISOString(),
           dataUrl,
           previewHtml,
+          previewTableHeaders,
+          previewTableRows,
         };
 
         try {
@@ -156,18 +249,54 @@ export default function Documents() {
           dispatch(addDocument({ id: res.id, ...docPayload }));
           message.success(`${file.name} uploaded successfully`);
         } catch (err) {
-          message.error("Failed to upload document");
-          console.error(err);
+          const detail = err?.message || "Unknown error";
+          message.error(`Failed to upload document: ${file.name} (${detail})`);
+          console.error("Upload error details:", err);
+          console.error("Payload size:", JSON.stringify(docPayload).length);
+        } finally {
+          // Remove file from processing set
+          setProcessingFiles((prev) => {
+            const next = new Set(prev);
+            next.delete(fileKey);
+            return next;
+          });
+          setUploadingCount((prev) => {
+            const newCount = prev - 1;
+            if (newCount === 0) setUploading(false);
+            return newCount;
+          });
         }
+      };
+
+      reader.onerror = () => {
+        message.error(`Failed to read file: ${file.name}`);
+        setProcessingFiles((prev) => {
+          const next = new Set(prev);
+          next.delete(fileKey);
+          return next;
+        });
+        setUploadingCount((prev) => {
+          const newCount = prev - 1;
+          if (newCount === 0) setUploading(false);
+          return newCount;
+        });
       };
 
       if (isExcel) reader.readAsBinaryString(file);
       else reader.readAsDataURL(file);
     } catch (err) {
-      message.error("Upload failed");
+      message.error(`Upload failed: ${file.name}`);
       console.error(err);
-    } finally {
-      setUploading(false);
+      setProcessingFiles((prev) => {
+        const next = new Set(prev);
+        next.delete(fileKey);
+        return next;
+      });
+      setUploadingCount((prev) => {
+        const newCount = prev - 1;
+        if (newCount === 0) setUploading(false);
+        return newCount;
+      });
     }
 
     return false; // Prevent default upload
@@ -176,6 +305,53 @@ export default function Documents() {
   const handlePreview = (doc) => {
     setPreviewDoc(doc);
     setPreviewOpen(true);
+  };
+
+  const renderExcelPreview = (doc) => {
+    const headers = doc?.previewTableHeaders || [];
+    const rows = doc?.previewTableRows || [];
+
+    if (headers.length) {
+      const columns = headers.map((header, idx) => {
+        const title =
+          header && header.toString().trim() !== ""
+            ? header
+            : `Column ${idx + 1}`;
+        const key = `col_${idx}`;
+        return { title, dataIndex: key, key };
+      });
+
+      const dataSource =
+        rows?.map((row, rIdx) => {
+          // Rows are stored as objects keyed by col_X
+          return { key: rIdx, ...row };
+        }) || [];
+
+      return (
+        <Table
+          columns={columns}
+          dataSource={dataSource}
+          size="small"
+          pagination={false}
+          scroll={{ x: true, y: 400 }}
+        />
+      );
+    }
+
+    if (doc?.previewHtml) {
+      return (
+        <div
+          dangerouslySetInnerHTML={{ __html: doc.previewHtml }}
+          style={{ overflowX: "auto", background: "white", padding: 10 }}
+        />
+      );
+    }
+
+    return (
+      <div className="text-center text-gray-600">
+        <p>No preview available</p>
+      </div>
+    );
   };
 
   const handleDelete = async (id) => {
@@ -190,6 +366,11 @@ export default function Documents() {
   };
 
   const handleDownload = (doc) => {
+    if (!doc.dataUrl) {
+      message.error("File data not available for download");
+      return;
+    }
+
     const link = document.createElement("a");
     link.href = doc.dataUrl;
     link.download = doc.name;
@@ -276,18 +457,19 @@ export default function Documents() {
         <Upload
           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif,.webp,.xls,.xlsx,.csv"
           beforeUpload={handleUpload}
-          multiple={false}
+          multiple={true}
           disabled={uploading}
         >
           <Button loading={uploading} size="large" type="primary">
-            📤 Upload Document
+            📤 Upload Documents
           </Button>
         </Upload>
         <p className="text-gray-600 text-sm mt-2">
-          Supported: PDF, Word (.doc/.docx), Images (.jpg/.png/.gif/.webp)
+          Supported: PDF, Word (.doc/.docx), Images (.jpg/.png/.gif/.webp),
+          Excel (.xls/.xlsx/.csv)
         </p>
-        <p className="text-gray-600 text-sm mt-2">
-          Supported: PDF, Word, Images, Excel (.xls/.xlsx/.csv)
+        <p className="text-gray-500 text-xs mt-1">
+          You can select and upload multiple files at once
         </p>
       </Card>
 
@@ -319,10 +501,7 @@ export default function Documents() {
         {previewDoc && (
           <div className="bg-gray-100 p-4 rounded">
             {previewDoc.fileType === "Excel" ? (
-              <div
-                dangerouslySetInnerHTML={{ __html: previewDoc.previewHtml }}
-                style={{ overflowX: "auto", background: "white", padding: 10 }}
-              />
+              renderExcelPreview(previewDoc)
             ) : previewDoc.fileType === "Image" ? (
               <img
                 src={previewDoc.dataUrl}

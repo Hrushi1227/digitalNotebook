@@ -1,5 +1,5 @@
 import { Button, Form, Input, InputNumber, Modal, Table } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import { Link } from "react-router-dom";
@@ -22,6 +22,17 @@ export default function Workers() {
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
   const [form] = Form.useForm();
+
+  // Pre-fill form when editing, reset when adding
+  useEffect(() => {
+    if (open) {
+      if (edit) {
+        form.setFieldsValue(edit);
+      } else {
+        form.resetFields();
+      }
+    }
+  }, [open, edit, form]);
 
   const columns = [
     {
