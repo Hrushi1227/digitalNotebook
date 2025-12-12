@@ -275,21 +275,21 @@ export default function WorkerPortal() {
       {/* Worker Profile Card - Only show if worker is registered */}
       {worker && (
         <Card className="mb-6 bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-2xl font-bold text-blue-900 mb-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="w-full sm:w-auto">
+              <h2 className="text-xl sm:text-2xl font-bold text-blue-900 mb-1">
                 {worker.name}
               </h2>
-              <p className="text-blue-800 text-lg">
-                📱 <span className="font-semibold">{worker.phone}</span>
+              <p className="text-blue-800 text-base sm:text-lg">
+                📱 <span className="font-semibold">{worker.phone || '—'}</span>
               </p>
               {worker.profession && (
-                <p className="text-blue-700 mt-1">Role: {worker.profession}</p>
+                <p className="text-blue-700 mt-1 text-sm">Role: {worker.profession}</p>
               )}
             </div>
-            <div className="text-right">
+            <div className="text-right w-full sm:w-auto">
               <p className="text-sm text-blue-600">Worker ID</p>
-              <p className="text-lg font-mono font-bold text-blue-900">
+              <p className="text-base sm:text-lg font-mono font-bold text-blue-900 break-words">
                 {worker.id}
               </p>
             </div>
@@ -443,17 +443,21 @@ export default function WorkerPortal() {
           title="Your Payment History"
           className="mb-6"
           extra={
-            <Button
-              type="primary"
-              icon={<DownloadOutlined />}
-              onClick={downloadPaymentPDF}
-              disabled={workerPayments.length === 0}
-            >
-              Download PDF
-            </Button>
+            <div className="w-full sm:w-auto">
+              <Button
+                type="primary"
+                icon={<DownloadOutlined />}
+                onClick={downloadPaymentPDF}
+                disabled={workerPayments.length === 0}
+                className="w-full sm:w-auto"
+                size="middle"
+              >
+                Download PDF
+              </Button>
+            </div>
           }
         >
-          <div id="payment-history-pdf" className="bg-white p-6">
+          <div id="payment-history-pdf" className="bg-white p-4 sm:p-6">
             {/* PDF Header with Worker Details */}
             <div className="mb-6 pb-4 border-b-2 border-gray-300">
               <h2 className="text-2xl font-bold mb-2">{worker.name}</h2>
@@ -465,7 +469,7 @@ export default function WorkerPortal() {
 
             {/* Payment Table */}
             {workerPayments.length > 0 ? (
-              <div style={{ overflowX: "auto" }}>
+              <div className="overflow-x-auto">
                 <Table
                   rowKey="id"
                   dataSource={workerPayments}
