@@ -32,7 +32,9 @@ export default function Workers() {
         form.resetFields();
       }
     }
-  }, [open, edit, form]);
+    // form is stable from Form.useForm(), safe to omit from deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, edit]);
 
   const columns = [
     {
@@ -59,8 +61,12 @@ export default function Workers() {
                   setOpen(true);
                 }}
                 onDelete={async () => {
-                  await deleteItem("workers", r.id);
-                  dispatch(deleteWorker(r.id));
+                  try {
+                    await deleteItem("workers", r.id);
+                    dispatch(deleteWorker(r.id));
+                  } catch (error) {
+                    console.error("Failed to delete worker:", error);
+                  }
                 }}
               />
             ),

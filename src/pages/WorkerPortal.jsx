@@ -46,33 +46,7 @@ export default function WorkerPortal() {
     }
   }, [workers]);
 
-  // Debug: Log data when it loads
-  useEffect(() => {
-    console.log("=== WorkerPortal Debug ===");
-    console.log("workerId (input):", workerId);
-    console.log("workers count:", workers?.length);
-    console.log("workers data:", workers);
-
-    if (workers && workers.length > 0) {
-      console.log(
-        "Worker names available:",
-        workers.map((w) => w.name)
-      );
-      workers.forEach((w) => {
-        const nameMatch = w.name?.toLowerCase() === workerId?.toLowerCase();
-        const idMatch = w.id?.toLowerCase() === workerId?.toLowerCase();
-        const phoneMatch = w.phone?.toLowerCase() === workerId?.toLowerCase();
-        console.log(
-          `Worker: "${w.name}" | ID: "${w.id}" | Phone: "${w.phone}"`
-        );
-        console.log(
-          `  Name match (${w.name?.toLowerCase()} === ${workerId?.toLowerCase()}): ${nameMatch}`
-        );
-        console.log(`  ID match: ${idMatch}`);
-        console.log(`  Phone match: ${phoneMatch}`);
-      });
-    }
-  }, [workerId, workers]);
+  // Debug logs removed for production
 
   // Find worker with case-insensitive matching - more explicit
   let worker = null;
@@ -85,24 +59,12 @@ export default function WorkerPortal() {
 
       if (wName === inputId || wId === inputId || wPhone === inputId) {
         worker = w;
-        console.log(
-          "✓ MATCH FOUND:",
-          w.name,
-          "| Matched by:",
-          wName === inputId ? "Name" : wId === inputId ? "ID" : "Phone"
-        );
         break;
       }
     }
   }
 
   if (!worker) {
-    console.log(
-      "✗ NO MATCH - Input:",
-      workerId,
-      "Available:",
-      workers?.map((w) => w.name)
-    );
   }
 
   // Use worker's actual ID from database for filtering

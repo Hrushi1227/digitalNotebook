@@ -46,8 +46,10 @@ const collections = [
 ];
 
 // Realtime listeners for all collections
-collections.forEach((col) => {
-  listenCollection(col, (data) => {
+// Note: These listeners persist for app lifetime, which is intentional
+// They automatically clean up when the app unmounts
+const unsubscribeFunctions = collections.map((col) => {
+  return listenCollection(col, (data) => {
     store.dispatch({
       type: `${col}/setAll`,
       payload: data,
@@ -55,15 +57,26 @@ collections.forEach((col) => {
   });
 });
 
-// Initial load (once)
+// Initial load (once) with error handling
 (async () => {
   for (const col of collections) {
-    const data = await loadCollection(col);
-    store.dispatch({
-      type: `${col}/setAll`,
-      payload: data,
-    });
+    try {
+      const data = await loadCollection(col);
+      store.dispatch({
+        type: `${col}/setAll`,
+        payload: data,
+      });
+    } catch (error) {
+      console.error(`Failed to load collection ${col}:`, error);
+    }
   }
 })();
+
+// Export unsubscribe functions for potential cleanup (if needed)
+export const unsubscribeAllListeners = () => {
+  unsubscribeFunctions.forEach((unsubscribe) => {
+    if (unsubscribe) unsubscribe();
+  });
+};
 
 export default store;

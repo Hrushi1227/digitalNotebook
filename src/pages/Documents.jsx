@@ -18,7 +18,7 @@ import {
   Tag,
   Upload,
 } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import * as XLSX from "xlsx";
 import PageHeader from "../components/common/PageHeader";
@@ -120,6 +120,28 @@ export default function Documents() {
   const [previewDoc, setPreviewDoc] = useState(null);
   const [processingFiles, setProcessingFiles] = useState(new Set());
 
+  // Cleanup processingFiles Set periodically to prevent memory leak
+  useEffect(() => {
+    const cleanup = setInterval(() => {
+      setProcessingFiles((prev) => {
+        // Keep only recent entries (last 100 files)
+        if (prev.size > 100) {
+          const entries = Array.from(prev);
+          return new Set(entries.slice(-50));
+        }
+        return prev;
+      });
+    }, 60000); // Cleanup every minute
+
+    return () => clearInterval(cleanup);
+  }, []);
+
+  // Clear previewDoc when modal closes
+  const handlePreviewClose = () => {
+    setPreviewOpen(false);
+    setPreviewDoc(null);
+  };
+
   const handleUpload = async (file) => {
     // Prevent duplicate uploads - check if file is already being processed
     const fileKey = `${file.name}_${file.size}_${file.lastModified}`;
@@ -207,12 +229,12 @@ export default function Documents() {
             previewTableHeaders = headers;
             previewTableRows = rows;
             // Store Excel file as base64 for download
+            // Optimized binary string conversion
             const binaryString = e.target.result;
-            let binary = "";
-            for (let i = 0; i < binaryString.length; i++) {
-              binary += String.fromCharCode(binaryString.charCodeAt(i) & 0xff);
-            }
-            dataUrl = "data:" + mimeType + ";base64," + btoa(binary);
+            const binary = Array.from(binaryString, (char) =>
+              String.fromCharCode(char.charCodeAt(0) & 0xff)
+            ).join("");
+            dataUrl = `data:${mimeType};base64,${btoa(binary)}`;
           } catch (excelErr) {
             console.error("Error processing Excel file:", excelErr);
             message.error(`Failed to process Excel file: ${file.name}`);
@@ -493,7 +515,7 @@ export default function Documents() {
       <Modal
         open={previewOpen}
         title={previewDoc?.name}
-        onCancel={() => setPreviewOpen(false)}
+        onCancel={handlePreviewClose}
         footer={null}
         width={900}
         bodyStyle={{ maxHeight: "80vh", overflowY: "auto" }}

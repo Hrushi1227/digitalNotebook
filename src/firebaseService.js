@@ -7,8 +7,7 @@ import {
   onSnapshot,
   updateDoc,
 } from "firebase/firestore";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { db, storage } from "./firebase";
+import { db } from "./firebase";
 
 // -------------- GENERIC FIRESTORE HELPERS -----------------
 
@@ -21,14 +20,6 @@ export const loadCollection = async (name) => {
 // Add new item
 export const addItem = async (name, data) => {
   return await addDoc(collection(db, name), data);
-};
-
-// Upload a file to Cloud Storage and return its URL/path
-export const uploadFile = async (path, file) => {
-  const storageRef = ref(storage, path);
-  const snapshot = await uploadBytes(storageRef, file);
-  const downloadUrl = await getDownloadURL(snapshot.ref);
-  return { downloadUrl, fullPath: snapshot.metadata.fullPath };
 };
 
 // Update item
