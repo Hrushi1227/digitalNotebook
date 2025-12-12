@@ -1,29 +1,32 @@
 import {
-  Button,
-  Card,
-  Empty,
-  Input,
-  Modal,
-  Space,
-  Table,
-  Upload,
-  message,
-  Tag,
-} from "antd";
-import {
   DeleteOutlined,
+  DownloadOutlined,
+  EyeOutlined,
   FileImageOutlined,
   FilePdfOutlined,
   FileWordOutlined,
-  DownloadOutlined,
-  EyeOutlined,
 } from "@ant-design/icons";
+import {
+  Button,
+  Card,
+  Empty,
+  message,
+  Modal,
+  Space,
+  Table,
+  Tag,
+  Upload,
+} from "antd";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import PageHeader from "../components/common/PageHeader";
 import ProtectedAction from "../components/common/ProtectedAction";
 import { addItem, deleteItem } from "../firebaseService";
-import { addDocument, deleteDocument, selectDocuments } from "../store/documentsSlice";
+import {
+  addDocument,
+  deleteDocument,
+  selectDocuments,
+} from "../store/documentsSlice";
 
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -251,7 +254,12 @@ export default function Documents() {
               <img
                 src={previewDoc.dataUrl}
                 alt={previewDoc.name}
-                style={{ maxWidth: "100%", maxHeight: "600px", margin: "0 auto", display: "block" }}
+                style={{
+                  maxWidth: "100%",
+                  maxHeight: "600px",
+                  margin: "0 auto",
+                  display: "block",
+                }}
               />
             ) : previewDoc.fileType === "PDF" ? (
               <iframe
@@ -267,7 +275,8 @@ export default function Documents() {
             ) : previewDoc.fileType === "Word" ? (
               <div className="bg-white p-4 rounded text-center">
                 <p className="text-gray-600 mb-4">
-                  Word document preview not available in browser. Download to view.
+                  Word document preview not available in browser. Download to
+                  view.
                 </p>
                 <Button
                   type="primary"

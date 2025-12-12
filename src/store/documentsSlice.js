@@ -25,12 +25,8 @@ export const documentsSlice = createSlice({
   },
 });
 
-export const {
-  setAll,
-  addDocument,
-  updateDocument,
-  deleteDocument,
-} = documentsSlice.actions;
+export const { setAll, addDocument, updateDocument, deleteDocument } =
+  documentsSlice.actions;
 
 export const selectDocuments = (state) => state.documents;
 
