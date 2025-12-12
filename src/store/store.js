@@ -1,9 +1,11 @@
 import { configureStore } from "@reduxjs/toolkit";
 
+import authReducer from "./authSlice";
 import budgetsReducer from "./budgetsSlice";
 import invoicesReducer from "./invoicesSlice";
 import ledgerReducer from "./ledgerSlice";
 import materialsReducer from "./materialsSlice";
+import messagesReducer from "./messagesSlice";
 import paymentsReducer from "./paymentsSlice";
 import schedulesReducer from "./schedulesSlice";
 import tasksReducer from "./tasksSlice";
@@ -13,6 +15,7 @@ import { listenCollection, loadCollection } from "../firebaseService";
 
 const store = configureStore({
   reducer: {
+    auth: authReducer,
     workers: workersReducer,
     tasks: tasksReducer,
     materials: materialsReducer,
@@ -21,6 +24,7 @@ const store = configureStore({
     invoices: invoicesReducer,
     schedules: schedulesReducer,
     ledger: ledgerReducer,
+    messages: messagesReducer,
   },
 });
 
@@ -35,6 +39,7 @@ const collections = [
   "invoices",
   "schedules",
   "ledger",
+  "messages",
 ];
 
 // Realtime listeners for all collections

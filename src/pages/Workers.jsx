@@ -1,11 +1,12 @@
-import { Button, Form, Input, InputNumber, Modal, Space, Table } from "antd";
+import { Button, Form, Input, InputNumber, Modal, Table } from "antd";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import { Link } from "react-router-dom";
 
-import ProtectedAction from "../components/common/ProtectedAction";
+import AdminOnly from "../components/common/AdminOnly";
 import { addItem, deleteItem, updateItem } from "../firebaseService";
+import { selectIsAdmin } from "../store/authSlice";
 import {
   addWorker,
   deleteWorker,
@@ -16,6 +17,7 @@ import {
 export default function Workers() {
   const workers = useSelector(selectWorkers);
   const dispatch = useDispatch();
+  const isAdmin = useSelector(selectIsAdmin);
 
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
@@ -34,38 +36,25 @@ export default function Workers() {
     { title: "Profession", dataIndex: "profession" },
     { title: "Rate (₹/day)", dataIndex: "rate" },
 
-    {
-      title: "Actions",
-      render: (_, r) => (
-        <Space>
-          <ProtectedAction
-            onAuthorized={() => {
-              setEdit(r);
-              setOpen(true);
-            }}
-          >
-            <Button size="small">Edit</Button>
-          </ProtectedAction>
-
-          <ProtectedAction
-            title="Passcode required to delete"
-            onAuthorized={() => {
-              Modal.confirm({
-                title: "Delete worker?",
-                onOk: async () => {
+    ...(isAdmin
+      ? [
+          {
+            title: "Actions",
+            render: (_, r) => (
+              <AdminOnly
+                onEdit={() => {
+                  setEdit(r);
+                  setOpen(true);
+                }}
+                onDelete={async () => {
                   await deleteItem("workers", r.id);
                   dispatch(deleteWorker(r.id));
-                },
-              });
-            }}
-          >
-            <Button size="small" danger>
-              Delete
-            </Button>
-          </ProtectedAction>
-        </Space>
-      ),
-    },
+                }}
+              />
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -74,15 +63,17 @@ export default function Workers() {
       <div className="flex justify-between mb-4">
         <h1 className="text-xl font-semibold">Workers</h1>
 
-        <Button
-          type="primary"
-          onClick={() => {
-            setEdit(null);
-            setOpen(true);
-          }}
-        >
-          Add Worker
-        </Button>
+        {isAdmin && (
+          <Button
+            type="primary"
+            onClick={() => {
+              setEdit(null);
+              setOpen(true);
+            }}
+          >
+            Add Worker
+          </Button>
+        )}
       </div>
 
       {/* Table */}

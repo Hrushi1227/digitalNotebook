@@ -1,25 +1,46 @@
 import {
+  BarChartOutlined,
   CheckSquareOutlined,
   DashboardOutlined,
+  LogoutOutlined,
   MenuOutlined,
+  MessageOutlined,
   ShoppingCartOutlined,
   TeamOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
 import { Button, Layout, Menu } from "antd";
-import { useState } from "react";
-import { Link, Route, Routes, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  Link,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 
 import Budgets from "./pages/Budgets";
 import Dashboard from "./pages/Dashboard";
 import Invoices from "./pages/Invoices";
 import Ledger from "./pages/Ledger";
+import Login from "./pages/Login";
 import Materials from "./pages/Materials";
+import Messages from "./pages/Messages";
 import Payments from "./pages/Payments";
 import PaymentSchedule from "./pages/PaymentSchedule";
 import Tasks from "./pages/Tasks";
 import WorkerDetails from "./pages/WorkerDetails";
+import WorkerLogin from "./pages/WorkerLogin";
+import WorkerPortal from "./pages/WorkerPortal";
 import Workers from "./pages/Workers";
+import WorkProgress from "./pages/WorkProgress";
+import {
+  logout,
+  selectIsAuthenticated,
+  selectUserRole,
+} from "./store/authSlice";
+import { initializeSession } from "./utils/security";
 
 const { Header, Sider, Content, Footer } = Layout;
 
@@ -69,11 +90,51 @@ const items = [
     icon: <CheckSquareOutlined />,
     label: <Link to="/schedule">Payment Schedule</Link>,
   },
+  {
+    key: "/progress",
+    icon: <BarChartOutlined />,
+    label: <Link to="/progress">Work Progress</Link>,
+  },
+  {
+    key: "/messages",
+    icon: <MessageOutlined />,
+    label: <Link to="/messages">Messages</Link>,
+  },
 ];
 
 export default function App() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const userRole = useSelector(selectUserRole);
   const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    initializeSession();
+  }, []);
+
+  const handleLogout = () => {
+    dispatch(logout());
+    navigate("/");
+  };
+
+  // Show login screen
+  if (!isAuthenticated) {
+    return (
+      <Routes>
+        <Route path="/worker-login" element={<WorkerLogin />} />
+        <Route path="*" element={<Login />} />
+      </Routes>
+    );
+  }
+
+  // Show worker portal
+  if (userRole === "worker") {
+    return <WorkerPortal />;
+  }
+
+  // Show admin dashboard
 
   return (
     <Layout className="min-h-screen">
@@ -109,15 +170,25 @@ export default function App() {
 
       {/* Main Layout */}
       <Layout>
-        <Header className="bg-white shadow-sm px-6 flex items-center">
-          <div className="lg:hidden mr-3">
-            <Button
-              type="text"
-              onClick={() => setCollapsed(!collapsed)}
-              icon={<MenuOutlined />}
-            />
+        <Header className="bg-white shadow-sm px-6 flex items-center justify-between">
+          <div className="flex items-center">
+            <div className="lg:hidden mr-3">
+              <Button
+                type="text"
+                onClick={() => setCollapsed(!collapsed)}
+                icon={<MenuOutlined />}
+              />
+            </div>
+            <div className="text-xl font-semibold">Home Renovation Tracker</div>
           </div>
-          <div className="text-xl font-semibold">Home Renovation Tracker</div>
+          <Button
+            type="text"
+            danger
+            onClick={handleLogout}
+            icon={<LogoutOutlined />}
+          >
+            Logout
+          </Button>
         </Header>
 
         {/* Page Content */}
@@ -134,6 +205,8 @@ export default function App() {
               <Route path="/invoices" element={<Invoices />} />
               <Route path="/ledger" element={<Ledger />} />
               <Route path="/schedule" element={<PaymentSchedule />} />
+              <Route path="/progress" element={<WorkProgress />} />
+              <Route path="/messages" element={<Messages />} />
             </Routes>
           </div>
         </Content>
