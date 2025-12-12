@@ -88,8 +88,18 @@ export default function Tasks() {
               size="small"
               type="primary"
               onClick={async () => {
-                await updateItem("tasks", r.id, { ...r, status: "completed" });
-                dispatch(updateTask({ id: r.id, status: "completed" }));
+                await updateItem("tasks", r.id, {
+                  ...r,
+                  status: "completed",
+                  updatedAt: new Date().toISOString(),
+                });
+                dispatch(
+                  updateTask({
+                    id: r.id,
+                    status: "completed",
+                    updatedAt: new Date().toISOString(),
+                  })
+                );
               }}
             >
               Mark Done
@@ -145,13 +155,17 @@ export default function Tasks() {
               workerId: vals.workerId,
               status: edit?.status || "pending",
               deadline: vals.deadline.format("YYYY-MM-DD"),
+              updatedAt: new Date().toISOString(),
             };
 
             if (edit) {
               await updateItem("tasks", edit.id, payload);
               dispatch(updateTask({ id: edit.id, ...payload }));
             } else {
-              const res = await addItem("tasks", payload);
+              const res = await addItem("tasks", {
+                ...payload,
+                createdAt: new Date().toISOString(),
+              });
               dispatch(addTask({ id: res.id, ...payload }));
             }
 

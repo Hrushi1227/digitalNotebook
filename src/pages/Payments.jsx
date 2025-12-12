@@ -99,6 +99,7 @@ export default function Payments() {
               amount: vals.amount,
               note: vals.note || "",
               date: vals.date.format("YYYY-MM-DD"),
+              createdAt: new Date().toISOString(),
             };
             const res = await addItem("payments", payload);
             dispatch(addPayment({ id: res.id, ...payload }));

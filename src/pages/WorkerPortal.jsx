@@ -1,18 +1,18 @@
+import { InfoCircleOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,
   Col,
+  Empty,
   Input,
+  Popover,
   Row,
   Space,
   Statistic,
   Table,
   Tag,
   Timeline,
-  Empty,
-  Popover,
 } from "antd";
-import { InfoCircleOutlined } from "@ant-design/icons";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -188,7 +188,7 @@ export default function WorkerPortal() {
       </Row>
 
       {/* Changes/Updates Report */}
-      <Card 
+      <Card
         title={
           <Space>
             <span>Recent Changes & Updates</span>
@@ -197,7 +197,9 @@ export default function WorkerPortal() {
               title="What is this?"
               trigger="hover"
             >
-              <InfoCircleOutlined style={{ cursor: "pointer", color: "#1890ff" }} />
+              <InfoCircleOutlined
+                style={{ cursor: "pointer", color: "#1890ff" }}
+              />
             </Popover>
           </Space>
         }
@@ -210,21 +212,19 @@ export default function WorkerPortal() {
                 change.type === "task"
                   ? "#1890ff"
                   : change.type === "payment"
-                    ? "#52c41a"
-                    : "gray",
+                  ? "#52c41a"
+                  : "gray",
               children: (
                 <div>
-                  <p className="font-semibold text-gray-800">
-                    {change.action}
-                  </p>
+                  <p className="font-semibold text-gray-800">{change.action}</p>
                   <p className="text-gray-600 text-sm">{change.description}</p>
                   <p className="text-gray-400 text-xs mt-1">
                     {change.date.toLocaleDateString()} (
                     {change.daysAgo === 0
                       ? "Today"
                       : change.daysAgo === 1
-                        ? "Yesterday"
-                        : `${change.daysAgo} days ago`}
+                      ? "Yesterday"
+                      : `${change.daysAgo} days ago`}
                     )
                   </p>
                 </div>
