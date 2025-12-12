@@ -1,4 +1,4 @@
-import { InfoCircleOutlined, DownloadOutlined } from "@ant-design/icons";
+import { DownloadOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,
@@ -13,11 +13,11 @@ import {
   Tag,
   Timeline,
 } from "antd";
+import html2canvas from "html2canvas";
+import { jsPDF } from "jspdf";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { jsPDF } from "jspdf";
-import html2canvas from "html2canvas";
 import { addItem } from "../firebaseService";
 import { logout, selectWorkerId } from "../store/authSlice";
 import { addMessage, selectWorkerMessages } from "../store/messagesSlice";
@@ -218,10 +218,28 @@ export default function WorkerPortal() {
       const element = document.getElementById("payment-history-pdf");
       if (!element) return;
 
-      const canvas = await html2canvas(element, {
+      // Clone the element so we can expand it to full content width for capture
+      const clone = element.cloneNode(true);
+      // Compute full scroll width so table is not truncated
+      const fullWidth = element.scrollWidth || element.offsetWidth || 1000;
+      clone.style.width = fullWidth + "px";
+      clone.style.position = "fixed";
+      clone.style.left = "-10000px";
+      clone.style.top = "0";
+      clone.style.overflow = "visible";
+      clone.style.background = "#ffffff";
+      document.body.appendChild(clone);
+
+      const canvas = await html2canvas(clone, {
         scale: 2,
         useCORS: true,
+        backgroundColor: "#ffffff",
+        width: fullWidth,
+        windowWidth: fullWidth,
       });
+
+      // remove the clone after capture
+      document.body.removeChild(clone);
 
       const pdf = new jsPDF({
         orientation: "portrait",
@@ -281,10 +299,12 @@ export default function WorkerPortal() {
                 {worker.name}
               </h2>
               <p className="text-blue-800 text-base sm:text-lg">
-                📱 <span className="font-semibold">{worker.phone || '—'}</span>
+                📱 <span className="font-semibold">{worker.phone || "—"}</span>
               </p>
               {worker.profession && (
-                <p className="text-blue-700 mt-1 text-sm">Role: {worker.profession}</p>
+                <p className="text-blue-700 mt-1 text-sm">
+                  Role: {worker.profession}
+                </p>
               )}
             </div>
             <div className="text-right w-full sm:w-auto">
@@ -462,7 +482,10 @@ export default function WorkerPortal() {
             <div className="mb-6 pb-4 border-b-2 border-gray-300">
               <h2 className="text-2xl font-bold mb-2">{worker.name}</h2>
               <p className="text-lg text-gray-700">📱 Mobile: {worker.phone}</p>
-              <p className="text-sm text-gray-600">
+              <p className="text-lg text-gray-800 font-semibold mt-2">
+                Total Paid: ₹{totalEarned}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
                 Generated on: {new Date().toLocaleDateString()}
               </p>
             </div>
@@ -482,6 +505,18 @@ export default function WorkerPortal() {
                     { title: "Date", dataIndex: "date" },
                     { title: "Note", dataIndex: "note" },
                   ]}
+                  summary={() => (
+                    <Table.Summary>
+                      <Table.Summary.Row>
+                        <Table.Summary.Cell index={0} colSpan={2} style={{ textAlign: "right", fontWeight: 700 }}>
+                          Total Paid
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell index={2} style={{ fontWeight: 700 }}>
+                          ₹{totalEarned}
+                        </Table.Summary.Cell>
+                      </Table.Summary.Row>
+                    </Table.Summary>
+                  )}
                   scroll={{ x: "max-content" }}
                   pagination={false}
                   bordered
