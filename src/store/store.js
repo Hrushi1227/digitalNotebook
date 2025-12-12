@@ -2,6 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 
 import authReducer from "./authSlice";
 import budgetsReducer from "./budgetsSlice";
+import documentsReducer from "./documentsSlice";
 import invoicesReducer from "./invoicesSlice";
 import ledgerReducer from "./ledgerSlice";
 import materialsReducer from "./materialsSlice";
@@ -21,6 +22,7 @@ const store = configureStore({
     materials: materialsReducer,
     payments: paymentsReducer,
     budgets: budgetsReducer,
+    documents: documentsReducer,
     invoices: invoicesReducer,
     schedules: schedulesReducer,
     ledger: ledgerReducer,
@@ -36,6 +38,7 @@ const collections = [
   "materials",
   "payments",
   "budgets",
+  "documents",
   "invoices",
   "schedules",
   "ledger",

@@ -22,6 +22,7 @@ import {
 
 import Budgets from "./pages/Budgets";
 import Dashboard from "./pages/Dashboard";
+import Documents from "./pages/Documents";
 import Invoices from "./pages/Invoices";
 import Ledger from "./pages/Ledger";
 import Login from "./pages/Login";
@@ -64,6 +65,11 @@ const items = [
     key: "/materials",
     icon: <ShoppingCartOutlined />,
     label: <Link to="/materials">Materials</Link>,
+  },
+  {
+    key: "/documents",
+    icon: <ShoppingCartOutlined />,
+    label: <Link to="/documents">Documents</Link>,
   },
   {
     key: "/payments",
@@ -200,6 +206,7 @@ export default function App() {
               <Route path="/workers/:id" element={<WorkerDetails />} />
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/materials" element={<Materials />} />
+              <Route path="/documents" element={<Documents />} />
               <Route path="/payments" element={<Payments />} />
               <Route path="/budgets" element={<Budgets />} />
               <Route path="/invoices" element={<Invoices />} />
