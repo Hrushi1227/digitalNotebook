@@ -562,13 +562,86 @@ export default function Documents() {
       <Card>
         {documents.length > 0 ? (
           <div style={{ overflowX: "auto" }}>
-            <Table
-              rowKey="id"
-              dataSource={documents}
-              columns={columns}
-              pagination={{ pageSize: 10 }}
-              scroll={{ x: "max-content" }}
-            />
+            {/* DESKTOP + TABLET TABLE VIEW */}
+            <div className="document-table-wrapper">
+              <Table
+                rowKey="id"
+                dataSource={documents}
+                columns={columns}
+                pagination={{ pageSize: 10 }}
+                scroll={{ x: "max-content" }}
+              />
+            </div>
+
+            {/* MOBILE CARD VIEW */}
+            <div className="document-mobile-list">
+              {documents.map((doc) => (
+                <div className="document-card" key={doc.id}>
+                  <div className="document-card-title">{doc.name}</div>
+
+                  <div className="document-card-row">
+                    <b>Type:</b> {doc.fileType}
+                  </div>
+
+                  <div className="document-card-row">
+                    <b>Size:</b> {(doc.size / 1024).toFixed(1)} KB
+                  </div>
+
+                  <div className="document-card-row">
+                    <b>Access:</b>{" "}
+                    <span
+                      style={{
+                        color: doc.visibility === "public" ? "green" : "red",
+                      }}
+                    >
+                      {doc.visibility}
+                    </span>
+                  </div>
+
+                  <div className="document-card-actions">
+                    <Button
+                      type="primary"
+                      block
+                      style={{ marginBottom: "6px" }}
+                      onClick={() => handlePreview(doc)}
+                    >
+                      Preview
+                    </Button>
+
+                    <Button
+                      block
+                      onClick={() => openAssignWorkerModal(doc)}
+                      style={{ marginBottom: "6px" }}
+                    >
+                      Assign Worker
+                    </Button>
+
+                    <Button
+                      block
+                      icon={<DownloadOutlined />}
+                      onClick={() => handleDownload(doc)}
+                      style={{ marginBottom: "6px" }}
+                    >
+                      Download
+                    </Button>
+
+                    <Button
+                      danger
+                      block
+                      icon={<DeleteOutlined />}
+                      onClick={() =>
+                        Modal.confirm({
+                          title: "Delete document?",
+                          onOk: () => handleDelete(doc.id),
+                        })
+                      }
+                    >
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
           <Empty description="No documents uploaded yet" />
