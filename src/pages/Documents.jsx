@@ -10,6 +10,7 @@ import {
 import {
   Button,
   Card,
+  Checkbox,
   Empty,
   message,
   Modal,
@@ -24,6 +25,8 @@ import * as XLSX from "xlsx";
 import PageHeader from "../components/common/PageHeader";
 import ProtectedAction from "../components/common/ProtectedAction";
 import { addItem, deleteItem, updateItem } from "../firebaseService";
+import { selectWorkers } from "../store/workersSlice";
+
 import {
   addDocument,
   deleteDocument,
@@ -120,6 +123,10 @@ export default function Documents() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewDoc, setPreviewDoc] = useState(null);
   const [processingFiles, setProcessingFiles] = useState(new Set());
+  const workers = useSelector(selectWorkers);
+  const [assignModal, setAssignModal] = useState(false);
+  const [assignDoc, setAssignDoc] = useState(null);
+  const [selectedWorkers, setSelectedWorkers] = useState([]);
 
   // Cleanup processingFiles Set periodically to prevent memory leak
   useEffect(() => {
@@ -136,6 +143,12 @@ export default function Documents() {
 
     return () => clearInterval(cleanup);
   }, []);
+
+  const openAssignWorkerModal = (doc) => {
+    setAssignDoc(doc);
+    setSelectedWorkers(doc.assignedWorkers || []);
+    setAssignModal(true);
+  };
 
   // Clear previewDoc when modal closes
   const handlePreviewClose = () => {
@@ -266,6 +279,7 @@ export default function Documents() {
           previewTableHeaders,
           previewTableRows,
           visibility: "private",
+          assignedWorkers: [],
         };
 
         try {
@@ -489,6 +503,10 @@ export default function Documents() {
             {record.visibility === "public" ? "Make Private" : "Make Public"}
           </Button>
 
+          <Button size="small" onClick={() => openAssignWorkerModal(record)}>
+            Assign Worker
+          </Button>
+
           <Button
             size="small"
             icon={<DownloadOutlined />}
@@ -556,6 +574,35 @@ export default function Documents() {
           <Empty description="No documents uploaded yet" />
         )}
       </Card>
+      <Modal
+        title="Assign Document to Workers"
+        open={assignModal}
+        onCancel={() => setAssignModal(false)}
+        onOk={async () => {
+          await updateItem("documents", assignDoc.id, {
+            assignedWorkers: selectedWorkers,
+          });
+
+          dispatch(
+            updateDocument({
+              id: assignDoc.id,
+              changes: { assignedWorkers: selectedWorkers },
+            })
+          );
+
+          setAssignModal(false);
+          message.success("Assigned successfully");
+        }}
+      >
+        <Checkbox.Group
+          options={workers.map((w) => ({
+            label: w.name,
+            value: w.id,
+          }))}
+          value={selectedWorkers}
+          onChange={(checked) => setSelectedWorkers(checked)}
+        />
+      </Modal>
 
       {/* Preview Modal */}
       <Modal

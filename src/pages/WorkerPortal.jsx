@@ -39,11 +39,6 @@ export default function WorkerPortal() {
   // Load documents
   const allDocuments = useSelector(selectDocuments);
 
-  // Workers see only PUBLIC documents
-  const publicDocuments = allDocuments.filter(
-    (doc) => doc.visibility === "public"
-  );
-
   const [messageText, setMessageText] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
@@ -72,6 +67,18 @@ export default function WorkerPortal() {
       }
     }
   }
+
+  // ✅ Filter documents AFTER worker is known
+  const workerDocuments = allDocuments.filter((doc) => {
+    if (doc.visibility === "public") return true;
+
+    if (!worker) return false;
+
+    return (
+      Array.isArray(doc.assignedWorkers) &&
+      doc.assignedWorkers.includes(worker.id)
+    );
+  });
 
   if (!worker) {
   }
@@ -541,10 +548,10 @@ export default function WorkerPortal() {
       {/* Public Documents Section */}
       {worker && (
         <Card title="Documents" className="mb-6">
-          {publicDocuments.length > 0 ? (
+          {workerDocuments.length > 0 ? (
             <Table
               rowKey="id"
-              dataSource={publicDocuments}
+              dataSource={workerDocuments}
               columns={[
                 {
                   title: "File",
