@@ -10,49 +10,43 @@ export default function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const handleLogin = async (vals) => {
+  const handleLogin = (vals) => {
     setLoading(true);
-    try {
-      if (vals.passcode === PASSCODE) {
-        dispatch(login({ role: "admin" }));
-        message.success("Login successful!");
-        navigate("/");
-      } else {
-        message.error("Invalid passcode");
-      }
-    } catch (e) {
-      message.error("Login failed");
-    } finally {
-      setLoading(false);
+    if (vals.passcode === PASSCODE) {
+      dispatch(login({ role: "admin" }));
+      message.success("Welcome Admin!");
+      navigate("/");
+    } else {
+      message.error("Invalid passcode");
     }
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-      <Card className="w-full max-w-md shadow-lg">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-200 p-4">
+      <Card className="w-full max-w-md shadow-xl rounded-2xl backdrop-blur-xl bg-white/80 border border-white/40 p-4 sm:p-6">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+          <h1 className="text-3xl font-extrabold text-gray-800 drop-shadow-sm">
             Renovation Tracker
           </h1>
-          <p className="text-gray-600">Admin Access Only</p>
+          <p className="text-gray-500 mt-1 tracking-wide">Admin Access Only</p>
         </div>
 
         <Form layout="vertical" onFinish={handleLogin}>
           <Form.Item
             name="passcode"
-            label="Admin Passcode"
+            label={
+              <span className="font-medium text-gray-700">Admin Passcode</span>
+            }
             rules={[
-              { required: true, message: "Please enter passcode" },
-              {
-                pattern: /^\d{4,6}$/,
-                message: "Passcode must be 4-6 digits",
-              },
+              { required: true, message: "Enter passcode" },
+              { pattern: /^\d{4,6}$/, message: "Passcode must be 4–6 digits" },
             ]}
           >
             <Input.Password
-              placeholder="Enter your admin passcode"
+              placeholder="Enter admin passcode"
               size="large"
-              autoFocus
+              className="rounded-xl"
             />
           </Form.Item>
 
@@ -63,21 +57,21 @@ export default function Login() {
               loading={loading}
               block
               size="large"
+              className="rounded-xl bg-indigo-600 hover:bg-indigo-700"
             >
               Login as Admin
             </Button>
           </Form.Item>
         </Form>
 
-        <div className="text-center text-sm text-gray-500 mt-4">
-          <p>Only admin can edit and delete data.</p>
-          <p className="mb-4">Viewers can see data only.</p>
+        <div className="text-center text-sm text-gray-600 mt-6">
+          <p className="mb-2">Are you a worker?</p>
           <Button
             type="link"
-            onClick={() => navigate("/worker-login")}
-            className="text-base"
+            className="text-base text-indigo-600"
+            onClick={() => navigate("/")}
           >
-            Are you a worker? Login here
+            Login as Worker
           </Button>
         </div>
       </Card>

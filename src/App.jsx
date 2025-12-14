@@ -129,8 +129,9 @@ export default function App() {
   if (!isAuthenticated) {
     return (
       <Routes>
-        <Route path="/worker-login" element={<WorkerLogin />} />
-        <Route path="*" element={<Login />} />
+        <Route path="/" element={<WorkerLogin />} />
+        <Route path="/admin-login" element={<Login />} />
+        <Route path="*" element={<WorkerLogin />} />
       </Routes>
     );
   }

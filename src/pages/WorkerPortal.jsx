@@ -65,7 +65,7 @@ export default function WorkerPortal() {
       const wPhone = (w?.phone || "").trim().toLowerCase();
       const inputId = (workerId || "").trim().toLowerCase();
 
-      if (wName === inputId || wId === inputId || wPhone === inputId) {
+      if (wPhone === inputId) {
         worker = w;
         break;
       }
@@ -547,39 +547,6 @@ export default function WorkerPortal() {
               The system matches your login ID with the worker NAME from the
               admin's Workers list.
             </p>
-
-            {workers && workers.length > 0 ? (
-              <div className="mt-6 p-4 bg-white rounded border border-orange-300">
-                <p className="text-orange-800 font-semibold text-center mb-3">
-                  Login with Name or Phone Number:
-                </p>
-                <div className="space-y-2">
-                  {workers.map((w) => (
-                    <div
-                      key={w.id}
-                      className="bg-orange-50 p-3 rounded border border-orange-200 text-center"
-                    >
-                      <div className="text-orange-900 font-medium">
-                        {w.name}
-                      </div>
-                      {w.phone && (
-                        <div className="text-orange-700 text-sm">
-                          📱 {w.phone}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <p className="text-orange-600 text-xs text-center mt-3">
-                  Use the name or phone number above to login
-                </p>
-              </div>
-            ) : (
-              <p className="text-orange-600 text-center text-sm mt-3">
-                No workers registered yet. Please ask the owner to add you to
-                the workers list.
-              </p>
-            )}
           </Empty>
         </Card>
       )}
