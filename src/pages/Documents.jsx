@@ -23,11 +23,12 @@ import { useDispatch, useSelector } from "react-redux";
 import * as XLSX from "xlsx";
 import PageHeader from "../components/common/PageHeader";
 import ProtectedAction from "../components/common/ProtectedAction";
-import { addItem, deleteItem } from "../firebaseService";
+import { addItem, deleteItem, updateItem } from "../firebaseService";
 import {
   addDocument,
   deleteDocument,
   selectDocuments,
+  updateDocument,
 } from "../store/documentsSlice";
 
 const ALLOWED_TYPES = [
@@ -264,6 +265,7 @@ export default function Documents() {
           previewHtml,
           previewTableHeaders,
           previewTableRows,
+          visibility: "private",
         };
 
         try {
@@ -420,6 +422,17 @@ export default function Documents() {
       width: 100,
     },
     {
+      title: "Access",
+      dataIndex: "visibility",
+      render: (visibility) => (
+        <Tag color={visibility === "public" ? "green" : "red"}>
+          {visibility === "public" ? "Public" : "Private"}
+        </Tag>
+      ),
+      width: 120,
+    },
+
+    {
       title: "Size",
       dataIndex: "size",
       render: (size) => `${(size / 1024).toFixed(2)} KB`,
@@ -443,6 +456,39 @@ export default function Documents() {
           >
             Preview
           </Button>
+          <Button
+            size="small"
+            onClick={() => {
+              const newVis =
+                record.visibility === "public" ? "private" : "public";
+
+              Modal.confirm({
+                title: `Make this document ${newVis}?`,
+                onOk: async () => {
+                  try {
+                    await updateItem("documents", record.id, {
+                      visibility: newVis,
+                    });
+
+                    dispatch(
+                      updateDocument({
+                        id: record.id,
+                        changes: { visibility: newVis },
+                      })
+                    );
+
+                    message.success(`Document updated to ${newVis}`);
+                  } catch (err) {
+                    console.error(err);
+                    message.error("Failed to update visibility");
+                  }
+                },
+              });
+            }}
+          >
+            {record.visibility === "public" ? "Make Private" : "Make Public"}
+          </Button>
+
           <Button
             size="small"
             icon={<DownloadOutlined />}

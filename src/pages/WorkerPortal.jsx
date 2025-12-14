@@ -20,6 +20,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { addItem } from "../firebaseService";
 import { logout, selectWorkerId } from "../store/authSlice";
+import { selectDocuments } from "../store/documentsSlice";
 import { addMessage, selectWorkerMessages } from "../store/messagesSlice";
 import { selectPayments } from "../store/paymentsSlice";
 import { selectTasks } from "../store/tasksSlice";
@@ -34,6 +35,14 @@ export default function WorkerPortal() {
   const workersData = useSelector(selectWorkers);
   const workers = Array.isArray(workersData) ? workersData : [];
   const messages = useSelector((s) => selectWorkerMessages(s, workerId));
+
+  // Load documents
+  const allDocuments = useSelector(selectDocuments);
+
+  // Workers see only PUBLIC documents
+  const publicDocuments = allDocuments.filter(
+    (doc) => doc.visibility === "public"
+  );
 
   const [messageText, setMessageText] = useState("");
   const [sendingMessage, setSendingMessage] = useState(false);
@@ -529,6 +538,47 @@ export default function WorkerPortal() {
           )}
         </Card>
       ) : null}
+      {/* Public Documents Section */}
+      {worker && (
+        <Card title="Documents" className="mb-6">
+          {publicDocuments.length > 0 ? (
+            <Table
+              rowKey="id"
+              dataSource={publicDocuments}
+              columns={[
+                {
+                  title: "File",
+                  dataIndex: "name",
+                },
+                {
+                  title: "Type",
+                  dataIndex: "fileType",
+                  render: (t) => <Tag>{t}</Tag>,
+                },
+                {
+                  title: "Download",
+                  render: (_, record) => (
+                    <Button
+                      type="primary"
+                      onClick={() => {
+                        const link = document.createElement("a");
+                        link.href = record.dataUrl;
+                        link.download = record.name;
+                        link.click();
+                      }}
+                    >
+                      Download
+                    </Button>
+                  ),
+                },
+              ]}
+              pagination={false}
+            />
+          ) : (
+            <p className="text-gray-500">No public documents available.</p>
+          )}
+        </Card>
+      )}
 
       {/* Messages - Only show if worker is registered */}
       {worker ? (

@@ -7,16 +7,16 @@ export const documentsSlice = createSlice({
   initialState,
   reducers: {
     setAll: (state, action) => {
-      // Replace all documents (from Firestore) - matches store.js dispatch pattern
       return action.payload || [];
     },
     addDocument: (state, action) => {
       state.push(action.payload);
     },
     updateDocument: (state, action) => {
-      const idx = state.findIndex((d) => d.id === action.payload.id);
+      const { id, changes } = action.payload;
+      const idx = state.findIndex((d) => d.id === id);
       if (idx !== -1) {
-        state[idx] = action.payload;
+        state[idx] = { ...state[idx], ...changes }; // IMPORTANT FIX
       }
     },
     deleteDocument: (state, action) => {
