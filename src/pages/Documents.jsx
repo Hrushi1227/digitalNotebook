@@ -150,6 +150,10 @@ export default function Documents() {
     setAssignModal(true);
   };
 
+  const sortedDocuments = [...documents].sort(
+    (a, b) => new Date(b.uploadedAt) - new Date(a.uploadedAt)
+  );
+
   // Clear previewDoc when modal closes
   const handlePreviewClose = () => {
     setPreviewOpen(false);
@@ -429,35 +433,7 @@ export default function Documents() {
       ),
       width: 250,
     },
-    {
-      title: "Type",
-      dataIndex: "fileType",
-      render: (type) => <Tag>{type}</Tag>,
-      width: 100,
-    },
-    {
-      title: "Access",
-      dataIndex: "visibility",
-      render: (visibility) => (
-        <Tag color={visibility === "public" ? "green" : "red"}>
-          {visibility === "public" ? "Public" : "Private"}
-        </Tag>
-      ),
-      width: 120,
-    },
 
-    {
-      title: "Size",
-      dataIndex: "size",
-      render: (size) => `${(size / 1024).toFixed(2)} KB`,
-      width: 120,
-    },
-    {
-      title: "Uploaded",
-      dataIndex: "uploadedAt",
-      render: (date) => new Date(date).toLocaleDateString(),
-      width: 130,
-    },
     {
       title: "Actions",
       render: (_, record) => (
@@ -530,6 +506,35 @@ export default function Documents() {
       ),
       width: 280,
     },
+    {
+      title: "Access",
+      dataIndex: "visibility",
+      render: (visibility) => (
+        <Tag color={visibility === "public" ? "green" : "red"}>
+          {visibility === "public" ? "Public" : "Private"}
+        </Tag>
+      ),
+      width: 120,
+    },
+    {
+      title: "Type",
+      dataIndex: "fileType",
+      render: (type) => <Tag>{type}</Tag>,
+      width: 100,
+    },
+
+    {
+      title: "Size",
+      dataIndex: "size",
+      render: (size) => `${(size / 1024).toFixed(2)} KB`,
+      width: 120,
+    },
+    {
+      title: "Uploaded",
+      dataIndex: "uploadedAt",
+      render: (date) => new Date(date).toLocaleDateString(),
+      width: 130,
+    },
   ];
 
   return (
@@ -566,7 +571,7 @@ export default function Documents() {
             <div className="document-table-wrapper">
               <Table
                 rowKey="id"
-                dataSource={documents}
+                dataSource={sortedDocuments}
                 columns={columns}
                 pagination={{ pageSize: 10 }}
                 scroll={{ x: "max-content" }}
