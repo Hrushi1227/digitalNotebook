@@ -568,10 +568,24 @@ export default function WorkerPortal() {
                     <Button
                       type="primary"
                       onClick={() => {
-                        const link = document.createElement("a");
-                        link.href = record.dataUrl;
-                        link.download = record.name;
-                        link.click();
+                        if (!record.dataUrl) {
+                          message.error("File data not available");
+                          return;
+                        }
+
+                        const isIOS = /iPhone|iPad|iPod/i.test(
+                          navigator.userAgent
+                        );
+
+                        if (isIOS) {
+                          // Safari iPhone/iPad cannot download directly
+                          window.open(record.dataUrl, "_blank");
+                        } else {
+                          const link = document.createElement("a");
+                          link.href = record.dataUrl;
+                          link.download = record.name;
+                          link.click();
+                        }
                       }}
                     >
                       Download
