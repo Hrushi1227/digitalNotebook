@@ -5,6 +5,7 @@ import {
   Col,
   Empty,
   Input,
+  Modal,
   Popover,
   Row,
   Space,
@@ -14,6 +15,7 @@ import {
   Timeline,
 } from "antd";
 import html2canvas from "html2canvas";
+
 import { jsPDF } from "jspdf";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -35,6 +37,8 @@ export default function WorkerPortal() {
   const workersData = useSelector(selectWorkers);
   const workers = Array.isArray(workersData) ? workersData : [];
   const messages = useSelector((s) => selectWorkerMessages(s, workerId));
+  const [previewDoc, setPreviewDoc] = useState(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   // Load documents
   const allDocuments = useSelector(selectDocuments);
@@ -329,7 +333,151 @@ export default function WorkerPortal() {
           </Col>
         </Row>
       )}
+      {/* Payment History - Only show if worker is registered */}
+      {worker ? (
+        <Card
+          title="Your Payment History"
+          className="mb-6"
+          extra={
+            <div className="w-full sm:w-auto">
+              <Button
+                type="primary"
+                icon={<DownloadOutlined />}
+                onClick={downloadPaymentPDF}
+                disabled={workerPayments.length === 0}
+                className="w-full sm:w-auto"
+                size="middle"
+              >
+                Download PDF
+              </Button>
+            </div>
+          }
+        >
+          <div id="payment-history-pdf" className="bg-white p-4 sm:p-6">
+            {/* PDF Header with Worker Details */}
+            <div className="mb-6 pb-4 border-b-2 border-gray-300">
+              <h2 className="text-2xl font-bold mb-2">{worker.name}</h2>
+              <p className="text-lg text-gray-700">📱 Mobile: {worker.phone}</p>
+              <p className="text-lg text-gray-800 font-semibold mt-2">
+                Total Paid: ₹{totalEarned}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                Generated on: {new Date().toLocaleDateString()}
+              </p>
+            </div>
 
+            {/* Payment Table */}
+            {workerPayments.length > 0 ? (
+              <div className="overflow-x-auto">
+                <Table
+                  rowKey="id"
+                  dataSource={workerPayments}
+                  columns={[
+                    {
+                      title: "Amount",
+                      dataIndex: "amount",
+                      render: (v) => `₹${v}`,
+                    },
+                    { title: "Date", dataIndex: "date" },
+                    { title: "Note", dataIndex: "note" },
+                  ]}
+                  summary={() => (
+                    <Table.Summary>
+                      <Table.Summary.Row>
+                        <Table.Summary.Cell
+                          index={0}
+                          colSpan={2}
+                          style={{ textAlign: "right", fontWeight: 700 }}
+                        >
+                          Total Paid
+                        </Table.Summary.Cell>
+                        <Table.Summary.Cell
+                          index={2}
+                          style={{ fontWeight: 700 }}
+                        >
+                          ₹{totalEarned}
+                        </Table.Summary.Cell>
+                      </Table.Summary.Row>
+                    </Table.Summary>
+                  )}
+                  scroll={{ x: "max-content" }}
+                  pagination={false}
+                  bordered
+                />
+              </div>
+            ) : (
+              <p className="text-gray-500">No payments yet.</p>
+            )}
+          </div>
+        </Card>
+      ) : null}
+      {/* Public Documents Section */}
+      {worker && (
+        <Card title="Documents" className="mb-6">
+          {workerDocuments.length > 0 ? (
+            <Table
+              rowKey="id"
+              dataSource={workerDocuments}
+              columns={[
+                {
+                  title: "File",
+                  dataIndex: "name",
+                },
+                {
+                  title: "Type",
+                  dataIndex: "fileType",
+                  render: (t) => <Tag>{t}</Tag>,
+                },
+                {
+                  title: "Actions",
+                  render: (_, record) => (
+                    <Space>
+                      <Button
+                        size="small"
+                        onClick={() => {
+                          setPreviewDoc(record);
+                          setPreviewOpen(true);
+                        }}
+                      >
+                        Preview
+                      </Button>
+
+                      <Button
+                        size="small"
+                        type="primary"
+                        onClick={() => {
+                          if (!record.dataUrl) {
+                            message.error("File data not available");
+                            return;
+                          }
+
+                          const isIOS = /iPhone|iPad|iPod/i.test(
+                            navigator.userAgent
+                          );
+
+                          if (isIOS) {
+                            window.open(record.dataUrl, "_blank");
+                          } else {
+                            const link = document.createElement("a");
+                            link.href = record.dataUrl;
+                            link.download = record.name;
+                            link.click();
+                          }
+                        }}
+                      >
+                        Download
+                      </Button>
+                    </Space>
+                  ),
+                },
+              ]}
+              pagination={false}
+            />
+          ) : (
+            <p className="text-gray-500">No public documents available.</p>
+          )}
+        </Card>
+      )}
       {/* Changes/Updates Report - Only show if worker is registered */}
       {worker ? (
         <Card
@@ -435,84 +583,6 @@ export default function WorkerPortal() {
           </Empty>
         </Card>
       )}
-      {/* Payment History - Only show if worker is registered */}
-      {worker ? (
-        <Card
-          title="Your Payment History"
-          className="mb-6"
-          extra={
-            <div className="w-full sm:w-auto">
-              <Button
-                type="primary"
-                icon={<DownloadOutlined />}
-                onClick={downloadPaymentPDF}
-                disabled={workerPayments.length === 0}
-                className="w-full sm:w-auto"
-                size="middle"
-              >
-                Download PDF
-              </Button>
-            </div>
-          }
-        >
-          <div id="payment-history-pdf" className="bg-white p-4 sm:p-6">
-            {/* PDF Header with Worker Details */}
-            <div className="mb-6 pb-4 border-b-2 border-gray-300">
-              <h2 className="text-2xl font-bold mb-2">{worker.name}</h2>
-              <p className="text-lg text-gray-700">📱 Mobile: {worker.phone}</p>
-              <p className="text-lg text-gray-800 font-semibold mt-2">
-                Total Paid: ₹{totalEarned}
-              </p>
-              <p className="text-sm text-gray-600 mt-1">
-                Generated on: {new Date().toLocaleDateString()}
-              </p>
-            </div>
-
-            {/* Payment Table */}
-            {workerPayments.length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table
-                  rowKey="id"
-                  dataSource={workerPayments}
-                  columns={[
-                    {
-                      title: "Amount",
-                      dataIndex: "amount",
-                      render: (v) => `₹${v}`,
-                    },
-                    { title: "Date", dataIndex: "date" },
-                    { title: "Note", dataIndex: "note" },
-                  ]}
-                  summary={() => (
-                    <Table.Summary>
-                      <Table.Summary.Row>
-                        <Table.Summary.Cell
-                          index={0}
-                          colSpan={2}
-                          style={{ textAlign: "right", fontWeight: 700 }}
-                        >
-                          Total Paid
-                        </Table.Summary.Cell>
-                        <Table.Summary.Cell
-                          index={2}
-                          style={{ fontWeight: 700 }}
-                        >
-                          ₹{totalEarned}
-                        </Table.Summary.Cell>
-                      </Table.Summary.Row>
-                    </Table.Summary>
-                  )}
-                  scroll={{ x: "max-content" }}
-                  pagination={false}
-                  bordered
-                />
-              </div>
-            ) : (
-              <p className="text-gray-500">No payments yet.</p>
-            )}
-          </div>
-        </Card>
-      ) : null}
 
       {/* Tasks - Only show if worker is registered */}
       {worker ? (
@@ -545,61 +615,6 @@ export default function WorkerPortal() {
           )}
         </Card>
       ) : null}
-      {/* Public Documents Section */}
-      {worker && (
-        <Card title="Documents" className="mb-6">
-          {workerDocuments.length > 0 ? (
-            <Table
-              rowKey="id"
-              dataSource={workerDocuments}
-              columns={[
-                {
-                  title: "File",
-                  dataIndex: "name",
-                },
-                {
-                  title: "Type",
-                  dataIndex: "fileType",
-                  render: (t) => <Tag>{t}</Tag>,
-                },
-                {
-                  title: "Download",
-                  render: (_, record) => (
-                    <Button
-                      type="primary"
-                      onClick={() => {
-                        if (!record.dataUrl) {
-                          message.error("File data not available");
-                          return;
-                        }
-
-                        const isIOS = /iPhone|iPad|iPod/i.test(
-                          navigator.userAgent
-                        );
-
-                        if (isIOS) {
-                          // Safari iPhone/iPad cannot download directly
-                          window.open(record.dataUrl, "_blank");
-                        } else {
-                          const link = document.createElement("a");
-                          link.href = record.dataUrl;
-                          link.download = record.name;
-                          link.click();
-                        }
-                      }}
-                    >
-                      Download
-                    </Button>
-                  ),
-                },
-              ]}
-              pagination={false}
-            />
-          ) : (
-            <p className="text-gray-500">No public documents available.</p>
-          )}
-        </Card>
-      )}
 
       {/* Messages - Only show if worker is registered */}
       {worker ? (
@@ -648,6 +663,41 @@ export default function WorkerPortal() {
           </Space.Compact>
         </Card>
       ) : null}
+      <Modal
+        open={previewOpen}
+        title={previewDoc?.name}
+        footer={null}
+        onCancel={() => setPreviewOpen(false)}
+        width={900}
+        bodyStyle={{ maxHeight: "80vh", overflowY: "auto" }}
+      >
+        {previewDoc && (
+          <div className="bg-gray-100 p-4 rounded">
+            {previewDoc.fileType === "Image" ? (
+              <img
+                src={previewDoc.dataUrl}
+                alt={previewDoc.name}
+                style={{ maxWidth: "100%", display: "block", margin: "0 auto" }}
+              />
+            ) : previewDoc.fileType === "PDF" ? (
+              <iframe
+                src={previewDoc.dataUrl}
+                title={previewDoc.name}
+                style={{
+                  width: "100%",
+                  height: "600px",
+                  border: "none",
+                  borderRadius: "4px",
+                }}
+              />
+            ) : (
+              <p className="text-center text-gray-600 mt-4">
+                Preview not available. Please download the file.
+              </p>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
