@@ -48,7 +48,7 @@ export default function Workers() {
     },
     { title: "Phone", dataIndex: "phone" },
     { title: "Profession", dataIndex: "profession" },
-    { title: "Rate (₹/day)", dataIndex: "rate" },
+    { title: "Rates", dataIndex: "rate" },
 
     ...(isAdmin
       ? [
@@ -144,11 +144,7 @@ export default function Workers() {
             <Input placeholder="Electrician, POP, Carpenter etc." />
           </Form.Item>
 
-          <Form.Item
-            name="rate"
-            label="Rate (₹/day)"
-            rules={[{ required: true }]}
-          >
+          <Form.Item name="rate" label="Rates" rules={[{ required: true }]}>
             <InputNumber className="w-full" min={0} />
           </Form.Item>
 
