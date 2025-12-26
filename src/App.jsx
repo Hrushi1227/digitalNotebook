@@ -1,6 +1,5 @@
 import {
   BarChartOutlined,
-  CheckSquareOutlined,
   DashboardOutlined,
   LogoutOutlined,
   MenuOutlined,
@@ -20,17 +19,12 @@ import {
   useNavigate,
 } from "react-router-dom";
 
-import Budgets from "./pages/Budgets";
 import Dashboard from "./pages/Dashboard";
 import Documents from "./pages/Documents";
-import Invoices from "./pages/Invoices";
-import Ledger from "./pages/Ledger";
 import Login from "./pages/Login";
 import Materials from "./pages/Materials";
 import Messages from "./pages/Messages";
 import Payments from "./pages/Payments";
-import PaymentSchedule from "./pages/PaymentSchedule";
-import Tasks from "./pages/Tasks";
 import WorkerDetails from "./pages/WorkerDetails";
 import WorkerLogin from "./pages/WorkerLogin";
 import WorkerPortal from "./pages/WorkerPortal";
@@ -57,11 +51,6 @@ const items = [
     label: <Link to="/workers">Workers</Link>,
   },
   {
-    key: "/tasks",
-    icon: <CheckSquareOutlined />,
-    label: <Link to="/tasks">Tasks</Link>,
-  },
-  {
     key: "/materials",
     icon: <ShoppingCartOutlined />,
     label: <Link to="/materials">Materials</Link>,
@@ -75,26 +64,6 @@ const items = [
     key: "/payments",
     icon: <WalletOutlined />,
     label: <Link to="/payments">Payments</Link>,
-  },
-  {
-    key: "/budgets",
-    icon: <WalletOutlined />,
-    label: <Link to="/budgets">Budgets</Link>,
-  },
-  {
-    key: "/invoices",
-    icon: <ShoppingCartOutlined />,
-    label: <Link to="/invoices">Invoices</Link>,
-  },
-  {
-    key: "/ledger",
-    icon: <DashboardOutlined />,
-    label: <Link to="/ledger">Ledger</Link>,
-  },
-  {
-    key: "/schedule",
-    icon: <CheckSquareOutlined />,
-    label: <Link to="/schedule">Payment Schedule</Link>,
   },
   {
     key: "/progress",
@@ -205,14 +174,9 @@ export default function App() {
               <Route path="/" element={<Dashboard />} />
               <Route path="/workers" element={<Workers />} />
               <Route path="/workers/:id" element={<WorkerDetails />} />
-              <Route path="/tasks" element={<Tasks />} />
               <Route path="/materials" element={<Materials />} />
               <Route path="/documents" element={<Documents />} />
               <Route path="/payments" element={<Payments />} />
-              <Route path="/budgets" element={<Budgets />} />
-              <Route path="/invoices" element={<Invoices />} />
-              <Route path="/ledger" element={<Ledger />} />
-              <Route path="/schedule" element={<PaymentSchedule />} />
               <Route path="/progress" element={<WorkProgress />} />
               <Route path="/messages" element={<Messages />} />
             </Routes>

@@ -6,16 +6,20 @@ import {
   FileImageOutlined,
   FilePdfOutlined,
   FileWordOutlined,
+  MoreOutlined,
 } from "@ant-design/icons";
 import {
   Button,
   Card,
+  Carousel,
   Checkbox,
+  Dropdown,
   Empty,
   message,
   Modal,
   Space,
   Table,
+  Tabs,
   Tag,
   Upload,
 } from "antd";
@@ -23,16 +27,14 @@ import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import * as XLSX from "xlsx";
 import PageHeader from "../components/common/PageHeader";
-import ProtectedAction from "../components/common/ProtectedAction";
 import { addItem, deleteItem, updateItem } from "../firebaseService";
-import { selectWorkers } from "../store/workersSlice";
-
 import {
   addDocument,
   deleteDocument,
   selectDocuments,
   updateDocument,
 } from "../store/documentsSlice";
+import { selectWorkers } from "../store/workersSlice";
 
 const ALLOWED_TYPES = [
   "application/pdf",
@@ -79,17 +81,34 @@ const getFileType = (mimeType) => {
   return "Document";
 };
 
+const ActionMenu = ({ record, onPreview, onDownload, onAssign, onDelete }) => (
+  <Dropdown
+    trigger={["click"]}
+    menu={{
+      items: [
+        { key: "preview", label: "Preview", icon: <EyeOutlined /> },
+        { key: "download", label: "Download", icon: <DownloadOutlined /> },
+        { key: "assign", label: "Assign Worker" },
+        { type: "divider" },
+        { key: "delete", label: "Delete", danger: true },
+      ],
+      onClick: ({ key }) => {
+        if (key === "preview") onPreview(record);
+        if (key === "download") onDownload(record);
+        if (key === "assign") onAssign(record);
+        if (key === "delete") {
+          Modal.confirm({
+            title: "Delete document?",
+            onOk: () => onDelete(record.id),
+          });
+        }
+      },
+    }}
+  >
+    <Button size="small" icon={<MoreOutlined />} />
+  </Dropdown>
+);
 // Apply basic styling to Excel HTML preview
-const styleExcelHtml = (html) =>
-  `
-  <style>
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: left; }
-    th { font-weight: 700; background: #f8fafc; }
-    tr:nth-child(even) { background: #f9fafb; }
-  </style>
-  ${html}
-`;
 
 // Convert first sheet to headers + rows (array-of-objects) for Firestore-safe storage/render
 const parseExcelSheet = (sheet, maxRows = 100) => {
@@ -127,6 +146,34 @@ export default function Documents() {
   const [assignModal, setAssignModal] = useState(false);
   const [assignDoc, setAssignDoc] = useState(null);
   const [selectedWorkers, setSelectedWorkers] = useState([]);
+
+  const ImageGrid = ({ data }) => (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {data.map((img) => (
+        <Card
+          key={img.id}
+          hoverable
+          cover={
+            <img
+              src={img.dataUrl}
+              className="h-32 object-cover"
+              alt={img.name}
+            />
+          }
+          actions={[
+            <EyeOutlined onClick={() => handlePreview(img)} />,
+            <DownloadOutlined onClick={() => handleDownload(img)} />,
+            <DeleteOutlined onClick={() => handleDelete(img.id)} />,
+          ]}
+        >
+          <div className="text-sm truncate">{img.name}</div>
+          <Tag color={img.visibility === "public" ? "green" : "red"}>
+            {img.visibility}
+          </Tag>
+        </Card>
+      ))}
+    </div>
+  );
 
   // Cleanup processingFiles Set periodically to prevent memory leak
   useEffect(() => {
@@ -407,6 +454,11 @@ export default function Documents() {
     }
   };
 
+  const imageDocs = sortedDocuments.filter((d) => d.fileType === "Image");
+  const pdfDocs = sortedDocuments.filter((d) => d.fileType === "PDF");
+  const excelDocs = sortedDocuments.filter((d) => d.fileType === "Excel");
+  const wordDocs = sortedDocuments.filter((d) => d.fileType === "Word");
+
   const handleDownload = (doc) => {
     if (!doc.dataUrl) {
       message.error("File data not available for download");
@@ -433,79 +485,20 @@ export default function Documents() {
       ),
       width: 250,
     },
-
     {
-      title: "Actions",
+      title: "",
+      width: 60,
       render: (_, record) => (
-        <Space>
-          <Button
-            type="primary"
-            size="small"
-            icon={<EyeOutlined />}
-            onClick={() => handlePreview(record)}
-          >
-            Preview
-          </Button>
-          <Button
-            size="small"
-            onClick={() => {
-              const newVis =
-                record.visibility === "public" ? "private" : "public";
-
-              Modal.confirm({
-                title: `Make this document ${newVis}?`,
-                onOk: async () => {
-                  try {
-                    await updateItem("documents", record.id, {
-                      visibility: newVis,
-                    });
-
-                    dispatch(
-                      updateDocument({
-                        id: record.id,
-                        changes: { visibility: newVis },
-                      })
-                    );
-
-                    message.success(`Document updated to ${newVis}`);
-                  } catch (err) {
-                    console.error(err);
-                    message.error("Failed to update visibility");
-                  }
-                },
-              });
-            }}
-          >
-            {record.visibility === "public" ? "Make Private" : "Make Public"}
-          </Button>
-
-          <Button size="small" onClick={() => openAssignWorkerModal(record)}>
-            Assign Worker
-          </Button>
-
-          <Button
-            size="small"
-            icon={<DownloadOutlined />}
-            onClick={() => handleDownload(record)}
-          >
-            Download
-          </Button>
-          <ProtectedAction
-            onAuthorized={() => {
-              Modal.confirm({
-                title: "Delete document?",
-                onOk: () => handleDelete(record.id),
-              });
-            }}
-          >
-            <Button danger size="small" icon={<DeleteOutlined />}>
-              Delete
-            </Button>
-          </ProtectedAction>
-        </Space>
+        <ActionMenu
+          record={record}
+          onPreview={handlePreview}
+          onDownload={handleDownload}
+          onAssign={openAssignWorkerModal}
+          onDelete={handleDelete}
+        />
       ),
-      width: 280,
     },
+
     {
       title: "Access",
       dataIndex: "visibility",
@@ -569,18 +562,61 @@ export default function Documents() {
           <div style={{ overflowX: "auto" }}>
             {/* DESKTOP + TABLET TABLE VIEW */}
             <div className="document-table-wrapper">
-              <Table
-                rowKey="id"
-                dataSource={sortedDocuments}
-                columns={columns}
-                pagination={{ pageSize: 10 }}
-                scroll={{ x: "max-content" }}
+              <Tabs
+                defaultActiveKey="images"
+                items={[
+                  {
+                    key: "images",
+                    label: `Images (${imageDocs.length})`,
+                    children: imageDocs.length ? (
+                      <ImageGrid data={imageDocs} />
+                    ) : (
+                      <Empty description="No images uploaded" />
+                    ),
+                  },
+                  {
+                    key: "pdfs",
+                    label: `PDFs (${pdfDocs.length})`,
+                    children: (
+                      <Table
+                        rowKey="id"
+                        dataSource={pdfDocs}
+                        columns={columns}
+                        pagination={{ pageSize: 10 }}
+                      />
+                    ),
+                  },
+                  {
+                    key: "excel",
+                    label: `Excel (${excelDocs.length})`,
+                    children: (
+                      <Table
+                        rowKey="id"
+                        dataSource={excelDocs}
+                        columns={columns}
+                        pagination={{ pageSize: 10 }}
+                      />
+                    ),
+                  },
+                  {
+                    key: "word",
+                    label: `Word (${wordDocs.length})`,
+                    children: (
+                      <Table
+                        rowKey="id"
+                        dataSource={wordDocs}
+                        columns={columns}
+                        pagination={{ pageSize: 10 }}
+                      />
+                    ),
+                  },
+                ]}
               />
             </div>
 
             {/* MOBILE CARD VIEW */}
             <div className="document-mobile-list">
-              {documents.map((doc) => (
+              {sortedDocuments.map((doc) => (
                 <div className="document-card" key={doc.id}>
                   <div className="document-card-title">{doc.name}</div>
 
@@ -696,16 +732,30 @@ export default function Documents() {
             {previewDoc.fileType === "Excel" ? (
               renderExcelPreview(previewDoc)
             ) : previewDoc.fileType === "Image" ? (
-              <img
-                src={previewDoc.dataUrl}
-                alt={previewDoc.name}
-                style={{
-                  maxWidth: "100%",
-                  maxHeight: "600px",
-                  margin: "0 auto",
-                  display: "block",
-                }}
-              />
+              <Carousel
+                infinite
+                arrows
+                dots
+                draggable
+                initialSlide={Math.max(
+                  0,
+                  imageDocs.findIndex((img) => img.id === previewDoc.id)
+                )}
+              >
+                {imageDocs.map((img) => (
+                  <div key={img.id} className="flex justify-center">
+                    <img
+                      src={img.dataUrl}
+                      alt={img.name}
+                      style={{
+                        maxHeight: "600px",
+                        objectFit: "contain",
+                        margin: "0 auto",
+                      }}
+                    />
+                  </div>
+                ))}
+              </Carousel>
             ) : previewDoc.fileType === "PDF" ? (
               <iframe
                 src={previewDoc.dataUrl}

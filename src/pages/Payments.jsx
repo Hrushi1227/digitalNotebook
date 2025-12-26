@@ -28,6 +28,10 @@ export default function Payments() {
     // keep last occurrence for each id
     return Array.from(new Map(payments.map((p) => [p.id, p])).values());
   }, [payments]);
+  const totalSpent = useMemo(() => {
+    return paymentsUnique.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  }, [paymentsUnique]);
+
   const workers = useSelector(selectWorkers);
   const dispatch = useDispatch();
 
@@ -68,6 +72,12 @@ export default function Payments() {
   return (
     <div className="p-2">
       <div className="flex justify-between mb-4">
+        <div className="mt-4 flex justify-end">
+          <div className="bg-white px-6 py-3 rounded-lg shadow text-lg font-semibold">
+            Total Spent on Workers:{" "}
+            <span className="text-green-600">₹{totalSpent}</span>
+          </div>
+        </div>
         <h1 className="text-xl font-semibold">Payments</h1>
 
         <Button type="primary" onClick={() => setOpen(true)}>

@@ -13,7 +13,6 @@ import {
 import dayjs from "dayjs";
 import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import PageHeader from "../components/common/PageHeader";
 import ProtectedAction from "../components/common/ProtectedAction";
 import equipmentList from "../data/equipmentList.json";
 import { addItem, deleteItem, updateItem } from "../firebaseService";
@@ -80,14 +79,14 @@ export default function Materials() {
 
   return (
     <div>
-      <PageHeader
-        title="Materials"
-        extra={
-          <div className="text-gray-600">
-            Total Spend: <b>₹{total}</b>
-          </div>
-        }
-      />
+      <div className="inline-flex items-center gap-3 bg-white border border-gray-200 px-6 py-2.5 rounded-lg shadow-sm">
+        <span className="text-base text-gray-700 font-bold">
+          Total Spent on Materials:
+        </span>
+        <span className="text-lg font-semibold text-green-600">
+          ₹{total.toLocaleString("en-IN")}
+        </span>
+      </div>
 
       <div className="bg-white rounded-xl p-4 shadow mb-4">
         <Button
