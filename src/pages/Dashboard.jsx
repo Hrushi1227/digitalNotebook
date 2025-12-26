@@ -1,99 +1,99 @@
-import { Card, Col, Row, Statistic, Table, Tag } from "antd";
+import {
+  FileTextOutlined,
+  ShoppingCartOutlined,
+  TeamOutlined,
+  WalletOutlined,
+} from "@ant-design/icons";
+import { Card, Col, Empty, Row, Statistic, Table } from "antd";
 import { useSelector } from "react-redux";
 
-import { useEffect } from "react";
-import { addItem, updateItem } from "../firebaseService";
-import { selectBudgets } from "../store/budgetsSlice";
-import { selectInvoices } from "../store/invoicesSlice";
-import { selectLedger } from "../store/ledgerSlice";
+import { selectDocuments } from "../store/documentsSlice";
 import { selectMaterials } from "../store/materialsSlice";
 import { selectPayments } from "../store/paymentsSlice";
-import { selectSchedules } from "../store/schedulesSlice";
 import { selectWorkers } from "../store/workersSlice";
 
 export default function Dashboard() {
   const materials = useSelector(selectMaterials);
   const payments = useSelector(selectPayments);
-  const budgets = useSelector(selectBudgets);
-  const schedules = useSelector(selectSchedules);
-  const invoices = useSelector(selectInvoices);
-  const ledger = useSelector(selectLedger);
   const workers = useSelector(selectWorkers);
+  const documents = useSelector(selectDocuments);
 
-  // ------------------- CALCULATIONS -------------------
+  /* ---------------- CALCULATIONS ---------------- */
 
-  // Total material cost
-  const materialSpend = materials.reduce((a, b) => a + Number(b.price || 0), 0);
+  const materialSpend = materials.reduce(
+    (sum, m) => sum + Number(m.price || 0),
+    0
+  );
 
-  // Total payments to workers
-  const paymentSpend = payments.reduce((a, b) => a + Number(b.amount || 0), 0);
+  const laborSpend = payments.reduce(
+    (sum, p) => sum + Number(p.amount || 0),
+    0
+  );
 
-  // Invoices total
-  const invoiceSpend = invoices.reduce((a, b) => a + Number(b.amount || 0), 0);
+  const totalSpend = materialSpend + laborSpend;
 
-  // Total ledger debit/credit
-  const totalDebit = ledger
-    .filter((l) => l.type === "debit")
-    .reduce((a, b) => a + Number(b.amount), 0);
+  /* -------- TOP MATERIAL CATEGORIES -------- */
 
-  const totalCredit = ledger
-    .filter((l) => l.type === "credit")
-    .reduce((a, b) => a + Number(b.amount), 0);
+  const materialByCategory = Object.values(
+    materials.reduce((acc, m) => {
+      const key = m.category || "Other";
+      acc[key] = acc[key] || { category: key, amount: 0 };
+      acc[key].amount += Number(m.price || 0);
+      return acc;
+    }, {})
+  ).sort((a, b) => b.amount - a.amount);
 
-  // Net balance
-  const netBalance = totalCredit - totalDebit;
+  /* -------- TOP PAID WORKERS -------- */
 
-  // Upcoming schedules (next 7 days)
-  const upcoming = schedules
-    .filter((s) => s.status === "pending")
-    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  const workerPayments = Object.values(
+    payments.reduce((acc, p) => {
+      acc[p.workerId] = acc[p.workerId] || {
+        workerId: p.workerId,
+        amount: 0,
+      };
+      acc[p.workerId].amount += Number(p.amount || 0);
+      return acc;
+    }, {})
+  )
+    .map((w) => ({
+      ...w,
+      name: workers.find((x) => x.id === w.workerId)?.name || "Unknown",
+    }))
+    .sort((a, b) => b.amount - a.amount);
 
-  // ------------------- TABLE COLUMNS -------------------
-  const scheduleColumns = [
+  /* ---------------- TABLE COLUMNS ---------------- */
+
+  const materialColumns = [
+    { title: "Category", dataIndex: "category" },
     {
-      title: "Worker",
-      dataIndex: "workerId",
-      render: (id) => workers.find((w) => w.id === id)?.name || "-",
-    },
-    { title: "Phase", dataIndex: "phase" },
-    { title: "Amount", dataIndex: "amount" },
-    {
-      title: "Due Date",
-      dataIndex: "dueDate",
-      render: (d) => <b>{d}</b>,
-    },
-    {
-      title: "Status",
-      dataIndex: "status",
-      render: (s) =>
-        s === "pending" ? (
-          <Tag color="orange">Pending</Tag>
-        ) : (
-          <Tag color="green">Paid</Tag>
-        ),
+      title: "Amount",
+      dataIndex: "amount",
+      render: (v) => `₹${v.toLocaleString()}`,
     },
   ];
 
-  useEffect(() => {
-    addItem("testConnect", { test: true });
-  }, []);
-
-  const handleBudgetUpdate = (record, val) => {
-    updateItem("budgets", record.id, { ...record, allocated: val });
-  };
+  const workerColumns = [
+    { title: "Worker", dataIndex: "name" },
+    {
+      title: "Paid Amount",
+      dataIndex: "amount",
+      render: (v) => `₹${v.toLocaleString()}`,
+    },
+  ];
 
   return (
-    <div className="p-2">
-      <h1 className="text-2xl font-semibold mb-4">Dashboard</h1>
+    <div className="p-4">
+      <h1 className="text-2xl font-semibold mb-6">Dashboard Overview</h1>
 
-      {/* TOP STATS */}
+      {/* KPI CARDS */}
       <Row gutter={[16, 16]}>
         <Col xs={24} md={6}>
           <Card>
             <Statistic
               title="Material Spend"
               value={materialSpend}
-              prefix="₹"
+              prefix={<ShoppingCartOutlined />}
+              suffix="₹"
             />
           </Card>
         </Col>
@@ -101,71 +101,69 @@ export default function Dashboard() {
         <Col xs={24} md={6}>
           <Card>
             <Statistic
-              title="Worker Payments"
-              value={paymentSpend}
-              prefix="₹"
+              title="Labor Spend"
+              value={laborSpend}
+              prefix={<TeamOutlined />}
+              suffix="₹"
             />
-          </Card>
-        </Col>
-
-        <Col xs={24} md={6}>
-          <Card>
-            <Statistic title="Invoices Total" value={invoiceSpend} prefix="₹" />
           </Card>
         </Col>
 
         <Col xs={24} md={6}>
           <Card>
             <Statistic
-              title="Net Balance"
-              value={netBalance}
-              prefix="₹"
-              valueStyle={{ color: netBalance < 0 ? "red" : "green" }}
+              title="Total Spend"
+              value={totalSpend}
+              prefix={<WalletOutlined />}
+              suffix="₹"
+              valueStyle={{ color: "#cf1322" }}
+            />
+          </Card>
+        </Col>
+
+        <Col xs={24} md={6}>
+          <Card>
+            <Statistic
+              title="Documents"
+              value={documents.length}
+              prefix={<FileTextOutlined />}
             />
           </Card>
         </Col>
       </Row>
 
-      {/* BUDGET SUMMARY */}
-      <h2 className="text-xl font-semibold mt-10 mb-4">Budget Summary</h2>
-      <Row gutter={[16, 16]}>
-        {budgets.map((b) => {
-          // Calculate spend for that category
-          const categorySpend = materials
-            .filter((m) => m.category === b.key)
-            .reduce((a, v) => a + Number(v.price || 0), 0);
-
-          const overBudget = categorySpend > Number(b.allocated);
-
-          return (
-            <Col xs={24} md={6} key={b.id}>
-              <Card>
-                <Statistic
-                  title={b.key}
-                  value={categorySpend}
-                  prefix="₹"
-                  suffix={`/ ${b.allocated}`}
-                  valueStyle={{ color: overBudget ? "red" : "green" }}
-                />
-              </Card>
-            </Col>
-          );
-        })}
-      </Row>
-
-      {/* UPCOMING SCHEDULES */}
-      <h2 className="text-xl font-semibold mt-10 mb-4">Upcoming Payments</h2>
+      {/* MATERIAL BREAKDOWN */}
+      <h2 className="text-xl font-semibold mt-10 mb-4">
+        Material Cost Breakdown
+      </h2>
 
       <Card>
-        <div style={{ overflowX: "auto" }}>
+        {materialByCategory.length ? (
           <Table
-            rowKey="id"
-            dataSource={upcoming}
-            columns={scheduleColumns}
+            rowKey="category"
+            dataSource={materialByCategory}
+            columns={materialColumns}
             pagination={false}
-            scroll={{ x: "max-content" }}
           />
-        </div>
+        ) : (
+          <Empty description="No material data" />
+        )}
+      </Card>
+
+      {/* WORKER PAYMENTS */}
+      <h2 className="text-xl font-semibold mt-10 mb-4">Top Paid Workers</h2>
+
+      <Card>
+        {workerPayments.length ? (
+          <Table
+            rowKey="workerId"
+            dataSource={workerPayments}
+            columns={workerColumns}
+            pagination={false}
+          />
+        ) : (
+          <Empty description="No worker payments yet" />
+        )}
       </Card>
     </div>
   );
