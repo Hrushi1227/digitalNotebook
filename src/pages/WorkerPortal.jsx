@@ -32,8 +32,10 @@ export default function WorkerPortal() {
   const workerId = useSelector(selectWorkerId);
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const payments = useSelector(selectPayments);
-  const tasks = useSelector(selectTasks);
+  const paymentsData = useSelector(selectPayments);
+  const tasksData = useSelector(selectTasks);
+  const payments = Array.isArray(paymentsData) ? paymentsData : [];
+  const tasks = Array.isArray(tasksData) ? tasksData : [];
   const workersData = useSelector(selectWorkers);
   const workers = Array.isArray(workersData) ? workersData : [];
   const messages = useSelector((s) => selectWorkerMessages(s, workerId));

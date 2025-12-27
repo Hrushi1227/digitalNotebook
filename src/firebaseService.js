@@ -19,7 +19,13 @@ export const loadCollection = async (name) => {
 
 // Add new item
 export const addItem = async (name, data) => {
-  return await addDoc(collection(db, name), data);
+  try {
+    const docRef = await addDoc(collection(db, name), data);
+    return docRef;
+  } catch (error) {
+    console.error("[DEBUG] Firestore addItem error:", error);
+    throw error;
+  }
 };
 
 // Update item

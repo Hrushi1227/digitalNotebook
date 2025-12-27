@@ -2,7 +2,7 @@ import { Button, Card, Form, Input, message } from "antd";
 import { useState } from "react";
 import { useDispatch } from "react-redux";
 import { useNavigate } from "react-router-dom";
-import { PASSCODE } from "../config";
+
 import { login } from "../store/authSlice";
 
 export default function Login() {
@@ -10,12 +10,18 @@ export default function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
+  // Superadmin: passcode 12321, Society Admin: passcode breeza
   const handleLogin = (vals) => {
     setLoading(true);
-    if (vals.passcode === PASSCODE) {
-      dispatch(login({ role: "admin" }));
-      message.success("Welcome Admin!");
+    const pass = vals.passcode?.trim();
+    if (pass === "12321") {
+      dispatch(login({ role: "superadmin" }));
+      message.success("Welcome Super Admin! You have full access.");
       navigate("/");
+    } else if (pass === "breeza") {
+      dispatch(login({ role: "societyadmin" }));
+      message.success("Welcome Breeza Society Admin!");
+      navigate("/society");
     } else {
       message.error("Invalid passcode");
     }
@@ -40,7 +46,15 @@ export default function Login() {
             }
             rules={[
               { required: true, message: "Enter passcode" },
-              { pattern: /^\d{4,6}$/, message: "Passcode must be 4–6 digits" },
+              {
+                validator: (_, value) => {
+                  if (!value) return Promise.reject("Enter passcode");
+                  if (/^\d{4,6}$/.test(value) || value === "breeza") {
+                    return Promise.resolve();
+                  }
+                  return Promise.reject("Passcode must be 4–6 ");
+                },
+              },
             ]}
           >
             <Input.Password
