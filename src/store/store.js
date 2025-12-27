@@ -5,6 +5,7 @@ import documentsReducer from "./documentsSlice";
 import materialsReducer from "./materialsSlice";
 import membersReducer from "./membersSlice";
 import messagesReducer from "./messagesSlice";
+import noticesReducer from "./noticesSlice";
 import parkingReducer from "./parkingSlice";
 import paymentsReducer from "./paymentsSlice";
 import workersReducer from "./workersSlice";
@@ -21,6 +22,7 @@ const store = configureStore({
     documents: documentsReducer,
     messages: messagesReducer,
     parking: parkingReducer,
+    notices: noticesReducer,
   },
 });
 
@@ -35,6 +37,7 @@ const collections = [
   "documents",
   "messages",
   "parking",
+  "notices",
 ];
 
 // Realtime listeners for all collections

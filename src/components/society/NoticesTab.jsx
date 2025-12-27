@@ -1,30 +1,49 @@
-import { Button, Card, Form, Input, List, message, Modal } from "antd";
-import { useState } from "react";
-import { useSelector } from "react-redux";
+import { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { selectUserRole } from "../../store/authSlice";
-
-// TODO: Replace with real Redux/Firestore data
+import {
+  addNotice,
+  listenNotices,
+  selectNotices,
+} from "../../store/noticesSlice";
 
 export default function NoticesTab() {
   const [visible, setVisible] = useState(false);
   const [form] = Form.useForm();
-  const [notices, setNotices] = useState([]);
+  const dispatch = useDispatch();
+  const notices = useSelector(selectNotices);
   const userRole = useSelector(selectUserRole);
+
+  useEffect(() => {
+    const unsub = dispatch(listenNotices());
+    return () => {
+      if (typeof unsub === "function") unsub();
+    };
+  }, [dispatch]);
 
   const showModal = () => setVisible(true);
   const hideModal = () => {
     setVisible(false);
-    setTimeout(() => form.resetFields(), 200); // Ensure modal closes before reset
+    setTimeout(() => form.resetFields(), 200);
   };
 
   const handleAdd = (vals) => {
-    setNotices([
-      { id: Date.now(), title: vals.title, content: vals.content },
-      ...notices,
-    ]);
-    message.success("Notice published");
-    setTimeout(() => form.resetFields(), 200);
-    hideModal();
+    dispatch(
+      addNotice({
+        title: vals.title,
+        content: vals.content,
+        createdAt: Date.now(),
+      })
+    )
+      .unwrap()
+      .then(() => {
+        message.success("Notice published");
+        setTimeout(() => form.resetFields(), 200);
+        hideModal();
+      })
+      .catch(() => {
+        message.error("Failed to publish notice");
+      });
   };
 
   return (
