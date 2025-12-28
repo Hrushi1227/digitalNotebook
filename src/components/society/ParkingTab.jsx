@@ -62,87 +62,80 @@ export default function ParkingTab() {
     return () => unsub();
   }, []);
 
-  // Summary stats
-  const total = data.length;
-  const owned = data.filter((d) => d.status === "Occupied").length;
-  const rented = data.filter((d) => d.status === "Rented").length;
-  const vacant = data.filter((d) => d.status === "Vacant").length;
-  const totalCarStickers = data.reduce(
-    (sum, d) =>
-      sum +
-      (d.vehicles
-        ?.filter((v) => v.type === "Car")
-        .reduce((s, v) => s + (v.stickerCount || 0), 0) || 0),
-    0
-  );
-  const totalBikeStickers = data.reduce(
-    (sum, d) =>
-      sum +
-      (d.vehicles
-        ?.filter((v) => v.type === "Bike")
-        .reduce((s, v) => s + (v.stickerCount || 0), 0) || 0),
-    0
-  );
-
-  const openAdd = () => {
-    setEditing(null);
-    form.resetFields();
-    setOpen(true);
-  };
-
-  const openEdit = (record) => {
-    setEditing(record);
-    form.setFieldsValue(record);
-    setOpen(true);
-  };
-
-  const handleSubmit = () => {
-    form.validateFields().then((values) => {
-      // Ensure vehicles is always an array
-      if (!Array.isArray(values.vehicles)) values.vehicles = [];
-      // Ensure documents is always an object with all keys
-      values.documents = {
-        possession: !!(values.documents && values.documents.possession),
-        rentAgreement: !!(values.documents && values.documents.rentAgreement),
-        idProof: !!(values.documents && values.documents.idProof),
-        mygate: !!(values.documents && values.documents.mygate),
-      };
-
-      // Ensure isRented is always boolean (never undefined)
-      if (typeof values.isRented !== "boolean") values.isRented = false;
-
-      // Ensure notes is always a string (never undefined)
-      if (typeof values.notes !== "string") values.notes = "";
-
-      if (!values.flat && !values.owner) {
-        // Vacant slot
-        values.status = "Vacant";
-        values.isRented = false;
-        values.rentedTo = "";
-        values.rentAmount = "";
-      } else if (!values.isRented) {
-        values.rentedTo = "";
-        values.rentAmount = "";
-        values.status = "Occupied";
-      } else {
-        values.status = "Rented";
-      }
-
-      if (editing) {
-        dispatch(updateParking({ id: editing.id, data: values }));
-      } else {
-        console.log("[DEBUG] Dispatching addParking", values);
-        dispatch(addParking(values))
-          .then((result) => {
-            console.log("[DEBUG] addParking result", result);
-          })
-          .catch((err) => {
-            console.error("[DEBUG] addParking error", err);
-          });
-      }
-      setOpen(false);
-    });
-  };
+      {/* Mobile card view - edge-to-edge, no margin, no border radius, no shadow */}
+      <div className="block sm:hidden">
+        {filteredData.map((p) => (
+          <div
+            key={p.id}
+            className="bg-white border-b border-gray-200 p-3 m-0 rounded-none shadow-none"
+            style={{ margin: 0, borderRadius: 0, boxShadow: "none" }}
+          >
+            <div className="font-semibold text-base mb-1">
+              Parking No: <span className="font-mono">{p.parkingNo}</span>
+            </div>
+            <div className="text-xs text-gray-500 mb-1">
+              Flat: <span className="font-medium text-gray-700">{p.flat}</span>
+            </div>
+            <div className="text-xs text-gray-500 mb-1">
+              Owner: <span className="font-medium text-gray-700">{p.owner}</span>
+            </div>
+            {p.isRented && (
+              <div className="text-xs text-gray-500 mb-1">
+                Rented To: <span className="font-medium text-gray-700">{p.rentedTo}</span>
+              </div>
+            )}
+            {p.rentAmount && (
+              <div className="text-xs text-gray-500 mb-1">
+                Rent: <span className="font-medium text-gray-700">₹{p.rentAmount}</span>
+              </div>
+            )}
+            <div className="text-xs text-gray-500 mb-1">
+              Vehicles: <span className="font-medium text-gray-700">{Array.isArray(p.vehicles) ? p.vehicles.join(", ") : "-"}</span>
+            </div>
+            <div className="text-xs text-gray-500 mb-1">Documents:
+              <span className="ml-2">
+                {p.documents?.possession && <span className="inline-block bg-green-100 text-green-700 px-2 py-0.5 rounded mr-1 text-xs">Possn</span>}
+                {p.documents?.rentAgreement && <span className="inline-block bg-green-100 text-green-700 px-2 py-0.5 rounded mr-1 text-xs">Rent Agrmt</span>}
+                {p.documents?.idProof && <span className="inline-block bg-green-100 text-green-700 px-2 py-0.5 rounded mr-1 text-xs">ID</span>}
+                {p.documents?.mygate && <span className="inline-block bg-green-100 text-green-700 px-2 py-0.5 rounded mr-1 text-xs">Mygate</span>}
+              </span>
+            </div>
+            {p.notes && (
+              <div className="text-xs text-gray-500 mb-1">Notes: <span className="font-medium text-gray-700">{p.notes}</span></div>
+            )}
+            <div className="flex flex-wrap gap-2 mb-2 mt-2">
+              <span className={`inline-block px-2 py-0.5 rounded text-xs ${p.status === "Occupied" ? "bg-green-100 text-green-700" : p.status === "Rented" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-700"}`}>{p.status}</span>
+            </div>
+            {isAdmin && (
+              <div className="flex gap-2 mt-2">
+                <Button size="small" onClick={() => onEdit(p)}>
+                  Edit
+                </Button>
+                <Button size="small" danger onClick={() => onDelete(p)}>
+                  Delete
+                </Button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+  // ...existing code...
+  // The following logic should be inside the form submit handler (e.g., handleOk or similar)
+  // Please ensure this logic is inside the correct function, e.g.:
+  //
+  // const handleOk = async () => {
+  //   const values = await form.validateFields();
+  //   if (!values.isRented) {
+  //     values.rentedTo = "";
+  //     values.rentAmount = "";
+  //     values.status = "Occupied";
+  //   } else {
+  //     values.status = "Rented";
+  //   }
+  //   ...dispatch logic...
+  // }
+  //
+  // Remove the misplaced block from the render body.
 
   const handleDelete = (id) => {
     const entry = data.find((item) => item.id === id);
@@ -370,7 +363,105 @@ export default function ParkingTab() {
         </div>
       </div>
 
-      <Table columns={columns} dataSource={filteredData} rowKey="id" />
+      {/* Desktop/tablet table view */}
+      <div className="hidden sm:block">
+        <Table columns={columns} dataSource={filteredData} rowKey="id" />
+      </div>
+
+      {/* Mobile card view */}
+      <div className="block sm:hidden space-y-3">
+        {filteredData.map((p) => (
+          <div
+            key={p.id}
+            className="bg-white rounded-lg shadow p-4 border border-gray-200"
+          >
+            <div className="font-semibold text-base mb-1">
+              Parking No: <span className="font-mono">{p.parkingNo}</span>
+            </div>
+            <div className="text-xs text-gray-500 mb-1">
+              Flat: <span className="font-medium text-gray-700">{p.flat}</span>
+            </div>
+            <div className="text-xs text-gray-500 mb-1">
+              Owner:{" "}
+              <span className="font-medium text-gray-700">{p.owner}</span>
+            </div>
+            {p.isRented && (
+              <div className="text-xs text-gray-500 mb-1">
+                Rented To:{" "}
+                <span className="font-medium text-gray-700">{p.rentedTo}</span>
+              </div>
+            )}
+            {p.rentAmount && (
+              <div className="text-xs text-gray-500 mb-1">
+                Rent:{" "}
+                <span className="font-medium text-gray-700">
+                  ₹{p.rentAmount}
+                </span>
+              </div>
+            )}
+            <div className="text-xs text-gray-500 mb-1">
+              Vehicles:{" "}
+              <span className="font-medium text-gray-700">
+                {Array.isArray(p.vehicles) ? p.vehicles.join(", ") : "-"}
+              </span>
+            </div>
+            <div className="text-xs text-gray-500 mb-1">
+              Documents:
+              <span className="ml-2">
+                {p.documents?.possession && (
+                  <span className="inline-block bg-green-100 text-green-700 px-2 py-0.5 rounded mr-1 text-xs">
+                    Possn
+                  </span>
+                )}
+                {p.documents?.rentAgreement && (
+                  <span className="inline-block bg-green-100 text-green-700 px-2 py-0.5 rounded mr-1 text-xs">
+                    Rent Agrmt
+                  </span>
+                )}
+                {p.documents?.idProof && (
+                  <span className="inline-block bg-green-100 text-green-700 px-2 py-0.5 rounded mr-1 text-xs">
+                    ID
+                  </span>
+                )}
+                {p.documents?.mygate && (
+                  <span className="inline-block bg-green-100 text-green-700 px-2 py-0.5 rounded mr-1 text-xs">
+                    Mygate
+                  </span>
+                )}
+              </span>
+            </div>
+            {p.notes && (
+              <div className="text-xs text-gray-500 mb-1">
+                Notes:{" "}
+                <span className="font-medium text-gray-700">{p.notes}</span>
+              </div>
+            )}
+            <div className="flex flex-wrap gap-2 mb-2 mt-2">
+              <span
+                className={`inline-block px-2 py-0.5 rounded text-xs ${
+                  p.status === "Occupied"
+                    ? "bg-green-100 text-green-700"
+                    : p.status === "Rented"
+                    ? "bg-yellow-100 text-yellow-700"
+                    : "bg-gray-100 text-gray-700"
+                }`}
+              >
+                {p.status}
+              </span>
+            </div>
+            {isAdmin && (
+              <div className="flex gap-2 mt-2">
+                <Button size="small" onClick={() => onEdit(p)}>
+                  Edit
+                </Button>
+                <Button size="small" danger onClick={() => onDelete(p)}>
+                  Delete
+                </Button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
       {isAdmin && (
         <Modal

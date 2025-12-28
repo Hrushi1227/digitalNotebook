@@ -129,7 +129,43 @@ export default function MembersTab() {
         </Button>
       </div>
 
-      <Table columns={columns} dataSource={members} rowKey="id" />
+      {/* Desktop/tablet table view */}
+      <div className="hidden sm:block">
+        <Table columns={columns} dataSource={members} rowKey="id" />
+      </div>
+
+      {/* Mobile card view - edge-to-edge, no margin, no border radius, no shadow */}
+      <div className="block sm:hidden">
+        {members.map((m) => (
+          <div
+            key={m.id}
+            className="bg-white border-b border-gray-200 p-3 m-0 rounded-none shadow-none"
+            style={{ margin: 0, borderRadius: 0, boxShadow: "none" }}
+          >
+            <div className="font-semibold text-base mb-1">{m.name}</div>
+            <div className="text-xs text-gray-500 mb-2">
+              Flat: <span className="font-medium text-gray-700">{m.flat}</span>
+            </div>
+            <div className="text-xs text-gray-500 mb-2">
+              Phone: <span className="font-medium text-gray-700">{m.phone}</span>
+            </div>
+            <div className="flex flex-wrap gap-2 mb-2">
+              <Tag color="blue">{m.role}</Tag>
+              <Tag color={m.status === "Active" ? "green" : "red"}>{m.status}</Tag>
+            </div>
+            {isAdmin && (
+              <div className="flex gap-2 mt-2">
+                <Button size="small" onClick={() => openEditModal(m)}>
+                  Edit
+                </Button>
+                <Button size="small" danger onClick={() => handleDelete(m)}>
+                  Delete
+                </Button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
       <Modal
         title={editingMember ? "Edit Member" : "Add Member"}

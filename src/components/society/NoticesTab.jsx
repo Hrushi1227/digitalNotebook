@@ -1,3 +1,4 @@
+import { Button, Card, Form, Input, List, message, Modal } from "antd";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { selectUserRole } from "../../store/authSlice";
@@ -47,51 +48,55 @@ export default function NoticesTab() {
   };
 
   return (
-    <Card
-      title="Notices & Announcements"
-      extra={
-        userRole?.includes("admin") && (
-          <Button type="primary" onClick={showModal}>
-            Publish Notice
-          </Button>
-        )
-      }
-    >
-      <List
-        dataSource={notices}
-        renderItem={(item) => (
-          <List.Item>
-            <List.Item.Meta
-              title={<b>{item.title}</b>}
-              description={item.content}
-            />
-          </List.Item>
-        )}
-      />
-      <Modal
-        open={visible}
-        onCancel={hideModal}
-        onOk={() => form.submit()}
-        title="Publish Notice"
-        okText="Publish"
+    <div className="notices-tab-card-wrapper">
+      <Card
+        title="Notices & Announcements"
+        extra={
+          userRole?.includes("admin") && (
+            <Button type="primary" onClick={showModal}>
+              Publish Notice
+            </Button>
+          )
+        }
+        bodyStyle={{ padding: 24 }}
+        style={{ width: "100%", maxWidth: 600, margin: "0 auto" }}
       >
-        <Form form={form} layout="vertical" onFinish={handleAdd}>
-          <Form.Item
-            name="title"
-            label="Title"
-            rules={[{ required: true, message: "Please enter Title" }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="content"
-            label="Content"
-            rules={[{ required: true, message: "Please enter Content" }]}
-          >
-            <Input.TextArea rows={3} />
-          </Form.Item>
-        </Form>
-      </Modal>
-    </Card>
+        <List
+          dataSource={notices}
+          renderItem={(item) => (
+            <List.Item>
+              <List.Item.Meta
+                title={<b>{item.title}</b>}
+                description={item.content}
+              />
+            </List.Item>
+          )}
+        />
+        <Modal
+          open={visible}
+          onCancel={hideModal}
+          onOk={() => form.submit()}
+          title="Publish Notice"
+          okText="Publish"
+        >
+          <Form form={form} layout="vertical" onFinish={handleAdd}>
+            <Form.Item
+              name="title"
+              label="Title"
+              rules={[{ required: true, message: "Please enter Title" }]}
+            >
+              <Input />
+            </Form.Item>
+            <Form.Item
+              name="content"
+              label="Content"
+              rules={[{ required: true, message: "Please enter Content" }]}
+            >
+              <Input.TextArea rows={3} />
+            </Form.Item>
+          </Form>
+        </Modal>
+      </Card>
+    </div>
   );
 }
