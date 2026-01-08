@@ -1,18 +1,33 @@
-import { DownloadOutlined, InfoCircleOutlined } from "@ant-design/icons";
 import {
+  CalendarOutlined,
+  CheckCircleOutlined,
+  ClockCircleOutlined,
+  DownloadOutlined,
+  EyeOutlined,
+  FileTextOutlined,
+  LogoutOutlined,
+  MessageOutlined,
+  SendOutlined,
+  UserOutlined,
+  WalletOutlined,
+} from "@ant-design/icons";
+import {
+  Avatar,
+  Badge,
   Button,
   Card,
   Col,
+  Divider,
   Empty,
   Input,
+  List,
   Modal,
-  Popover,
   Row,
   Space,
   Statistic,
   Table,
   Tag,
-  Timeline,
+  Tooltip,
 } from "antd";
 import html2canvas from "html2canvas";
 
@@ -255,418 +270,748 @@ export default function WorkerPortal() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      {/* Header */}
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">
-            Welcome, {worker?.name || workerId}
-          </h1>
-          <p className="text-gray-600">Your Work Portal</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Professional Header */}
+      <div
+        className="shadow-md mb-6"
+        style={{
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          padding: "24px",
+          color: "white",
+        }}
+      >
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold mb-2">
+                👋 Welcome, {worker?.name || workerId}
+              </h1>
+              <p className="opacity-90 text-base">
+                Your Personal Work Portal - View payments, documents &
+                communicate
+              </p>
+            </div>
+            <Button
+              danger
+              size="large"
+              icon={<LogoutOutlined />}
+              onClick={handleLogout}
+              style={{ minWidth: "120px" }}
+            >
+              Logout
+            </Button>
+          </div>
         </div>
-        <Space>
-          <Button onClick={() => navigate("/")} type="default">
-            Back to Admin Portal
-          </Button>
-          <Button danger onClick={handleLogout}>
-            Logout
-          </Button>
-        </Space>
       </div>
 
-      {/* Worker Profile Card - Only show if worker is registered */}
-      {worker && (
-        <Card className="mb-6 bg-gradient-to-r from-blue-50 to-blue-100 border-l-4 border-blue-500">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="w-full sm:w-auto">
-              <h2 className="text-xl sm:text-2xl font-bold text-blue-900 mb-1">
-                {worker.name}
-              </h2>
-              <p className="text-blue-800 text-base sm:text-lg">
-                📱 <span className="font-semibold">{worker.phone || "—"}</span>
-              </p>
-              {worker.profession && (
-                <p className="text-blue-700 mt-1 text-sm">
-                  Role: {worker.profession}
-                </p>
+      <div className="max-w-7xl mx-auto px-4 pb-8">
+        {/* Worker Profile Card - Only show if worker is registered */}
+        {worker && (
+          <Card
+            className="mb-6 shadow-lg"
+            style={{
+              background: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+              borderRadius: "12px",
+              border: "none",
+            }}
+          >
+            <Row align="middle" gutter={[16, 16]}>
+              <Col xs={24} sm={4} md={3} className="text-center sm:text-left">
+                <Avatar
+                  size={80}
+                  style={{
+                    backgroundColor: "#667eea",
+                    fontSize: "32px",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {worker.name?.charAt(0)?.toUpperCase()}
+                </Avatar>
+              </Col>
+              <Col xs={24} sm={14} md={15}>
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-1">
+                  {worker.name}
+                </h2>
+                {worker.profession && (
+                  <Tag
+                    color="blue"
+                    style={{ fontSize: "14px", padding: "4px 12px" }}
+                  >
+                    <UserOutlined className="mr-1" />
+                    {worker.profession}
+                  </Tag>
+                )}
+                <div className="mt-3 text-gray-700">
+                  <div className="mb-1">
+                    📱 <strong>Phone:</strong> +91{worker.phone || "—"}
+                  </div>
+                  <div>
+                    💼 <strong>Daily Rate:</strong> ₹{worker.rate || "—"}/day
+                  </div>
+                </div>
+              </Col>
+              <Col xs={24} sm={6} md={6} className="text-center sm:text-right">
+                <div className="bg-white bg-opacity-70 rounded-lg p-3">
+                  <div className="text-xs text-gray-600 mb-1">Worker ID</div>
+                  <div className="text-sm font-mono font-bold text-gray-800 break-all">
+                    {worker.id}
+                  </div>
+                </div>
+              </Col>
+            </Row>
+          </Card>
+        )}
+
+        {/* Stats - Only show if worker is registered */}
+        {worker && (
+          <Row gutter={[16, 16]} className="mb-6">
+            <Col xs={24} sm={8}>
+              <Card
+                className="shadow-md hover:shadow-xl transition-shadow"
+                style={{ borderRadius: "12px" }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ fontSize: "16px" }}>
+                      <WalletOutlined /> Total Earned
+                    </span>
+                  }
+                  value={totalEarned}
+                  prefix="₹"
+                  valueStyle={{
+                    color: "#52c41a",
+                    fontSize: "28px",
+                    fontWeight: "bold",
+                  }}
+                  suffix={
+                    <div className="text-sm text-gray-500">
+                      {workerPayments.length} payments
+                    </div>
+                  }
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Card
+                className="shadow-md hover:shadow-xl transition-shadow"
+                style={{ borderRadius: "12px" }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ fontSize: "16px" }}>
+                      <FileTextOutlined /> Tasks Assigned
+                    </span>
+                  }
+                  value={workerTasks.length}
+                  valueStyle={{
+                    color: "#1890ff",
+                    fontSize: "28px",
+                    fontWeight: "bold",
+                  }}
+                />
+              </Card>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Card
+                className="shadow-md hover:shadow-xl transition-shadow"
+                style={{ borderRadius: "12px" }}
+              >
+                <Statistic
+                  title={
+                    <span style={{ fontSize: "16px" }}>
+                      <CheckCircleOutlined /> Completed Tasks
+                    </span>
+                  }
+                  value={completedTasks}
+                  suffix={`/ ${workerTasks.length}`}
+                  valueStyle={{
+                    color: "#faad14",
+                    fontSize: "28px",
+                    fontWeight: "bold",
+                  }}
+                />
+              </Card>
+            </Col>
+          </Row>
+        )}
+        {/* Payment History - Only show if worker is registered */}
+        {worker ? (
+          <Card
+            title={
+              <Space>
+                <WalletOutlined
+                  style={{ fontSize: "20px", color: "#52c41a" }}
+                />
+                <span style={{ fontSize: "18px", fontWeight: "600" }}>
+                  Payment History
+                </span>
+                <Badge
+                  count={workerPayments.length}
+                  style={{ backgroundColor: "#52c41a" }}
+                />
+              </Space>
+            }
+            className="mb-6 shadow-lg"
+            style={{ borderRadius: "12px" }}
+            extra={
+              <Tooltip title="Download payment history as PDF">
+                <Button
+                  type="primary"
+                  icon={<DownloadOutlined />}
+                  onClick={downloadPaymentPDF}
+                  disabled={workerPayments.length === 0}
+                  size="large"
+                  style={{ borderRadius: "8px" }}
+                >
+                  <span className="hidden sm:inline">Download PDF</span>
+                </Button>
+              </Tooltip>
+            }
+          >
+            <div
+              id="payment-history-pdf"
+              className="bg-white p-4 sm:p-6"
+              style={{ borderRadius: "8px" }}
+            >
+              {/* PDF Header with Worker Details */}
+              <div
+                className="mb-6 pb-4 border-b-2"
+                style={{ borderColor: "#667eea" }}
+              >
+                <Row align="middle" gutter={[16, 16]}>
+                  <Col flex="auto">
+                    <h2
+                      className="text-2xl font-bold mb-2"
+                      style={{ color: "#667eea" }}
+                    >
+                      Payment Statement
+                    </h2>
+                    <div className="text-base text-gray-700">
+                      <div className="mb-1">
+                        <strong>Name:</strong> {worker.name}
+                      </div>
+                      <div className="mb-1">
+                        <strong>Phone:</strong> +91{worker.phone}
+                      </div>
+                      <div className="mb-1">
+                        <strong>Profession:</strong> {worker.profession || "—"}
+                      </div>
+                    </div>
+                  </Col>
+                  <Col>
+                    <div className="text-right">
+                      <div className="text-sm text-gray-500 mb-1">
+                        Total Amount Paid
+                      </div>
+                      <div
+                        className="text-3xl font-bold"
+                        style={{ color: "#52c41a" }}
+                      >
+                        ₹{totalEarned.toLocaleString()}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-2">
+                        Generated: {new Date().toLocaleDateString("en-IN")}
+                      </div>
+                    </div>
+                  </Col>
+                </Row>
+              </div>
+
+              {/* Payment Table */}
+              {workerPayments.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table
+                    rowKey="id"
+                    dataSource={workerPayments}
+                    columns={[
+                      {
+                        title: "Sr. No.",
+                        render: (_, __, index) => index + 1,
+                        width: 80,
+                      },
+                      {
+                        title: "Payment Date",
+                        dataIndex: "date",
+                        render: (date) => (
+                          <Space>
+                            <CalendarOutlined style={{ color: "#1890ff" }} />
+                            {date}
+                          </Space>
+                        ),
+                      },
+                      {
+                        title: "Amount Paid",
+                        dataIndex: "amount",
+                        render: (v) => (
+                          <span
+                            style={{
+                              fontSize: "16px",
+                              fontWeight: "600",
+                              color: "#52c41a",
+                            }}
+                          >
+                            ₹{Number(v).toLocaleString()}
+                          </span>
+                        ),
+                      },
+                      {
+                        title: "Description / Note",
+                        dataIndex: "note",
+                        render: (note) => note || "—",
+                      },
+                    ]}
+                    summary={() => (
+                      <Table.Summary>
+                        <Table.Summary.Row style={{ background: "#f0f7ff" }}>
+                          <Table.Summary.Cell
+                            index={0}
+                            colSpan={2}
+                            style={{
+                              textAlign: "right",
+                              fontWeight: 700,
+                              fontSize: "16px",
+                            }}
+                          >
+                            TOTAL PAID
+                          </Table.Summary.Cell>
+                          <Table.Summary.Cell
+                            index={2}
+                            colSpan={2}
+                            style={{
+                              fontWeight: 700,
+                              fontSize: "18px",
+                              color: "#52c41a",
+                            }}
+                          >
+                            ₹{totalEarned.toLocaleString()}
+                          </Table.Summary.Cell>
+                        </Table.Summary.Row>
+                      </Table.Summary>
+                    )}
+                    scroll={{ x: "max-content" }}
+                    pagination={{ pageSize: 10, showSizeChanger: false }}
+                    bordered
+                  />
+                </div>
+              ) : (
+                <Empty
+                  description="No payments received yet"
+                  style={{ margin: "40px 0" }}
+                />
               )}
             </div>
-            <div className="text-right w-full sm:w-auto">
-              <p className="text-sm text-blue-600">Worker ID</p>
-              <p className="text-base sm:text-lg font-mono font-bold text-blue-900 break-words">
-                {worker.id}
-              </p>
-            </div>
-          </div>
-        </Card>
-      )}
+          </Card>
+        ) : null}
+        {/* Public Documents Section */}
+        {worker && (
+          <Card
+            title={
+              <Space>
+                <FileTextOutlined
+                  style={{ fontSize: "20px", color: "#1890ff" }}
+                />
+                <span style={{ fontSize: "18px", fontWeight: "600" }}>
+                  Documents & Files
+                </span>
+                <Badge
+                  count={workerDocuments.length}
+                  style={{ backgroundColor: "#1890ff" }}
+                />
+              </Space>
+            }
+            className="mb-6 shadow-lg"
+            style={{ borderRadius: "12px" }}
+          >
+            {workerDocuments.length > 0 ? (
+              <List
+                dataSource={workerDocuments}
+                grid={{ gutter: 16, xs: 1, sm: 2, md: 3, lg: 3, xl: 4, xxl: 4 }}
+                renderItem={(record) => (
+                  <List.Item>
+                    <Card
+                      hoverable
+                      className="shadow-sm"
+                      style={{ borderRadius: "8px", height: "100%" }}
+                      cover={
+                        <div
+                          style={{
+                            background:
+                              "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                            height: "120px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "8px 8px 0 0",
+                          }}
+                        >
+                          <FileTextOutlined
+                            style={{ fontSize: "48px", color: "white" }}
+                          />
+                        </div>
+                      }
+                    >
+                      <Card.Meta
+                        title={
+                          <Tooltip title={record.name}>
+                            <div className="truncate">{record.name}</div>
+                          </Tooltip>
+                        }
+                        description={
+                          <div>
+                            <Tag color="blue" style={{ marginBottom: "8px" }}>
+                              {record.fileType}
+                            </Tag>
+                            <div>
+                              <Space size="small">
+                                <Tooltip title="Preview document">
+                                  <Button
+                                    size="small"
+                                    icon={<EyeOutlined />}
+                                    onClick={() => {
+                                      setPreviewDoc(record);
+                                      setPreviewOpen(true);
+                                    }}
+                                  >
+                                    Preview
+                                  </Button>
+                                </Tooltip>
+                                <Tooltip title="Download document">
+                                  <Button
+                                    size="small"
+                                    type="primary"
+                                    icon={<DownloadOutlined />}
+                                    onClick={() => {
+                                      if (!record.dataUrl) {
+                                        return;
+                                      }
+                                      const isIOS = /iPhone|iPad|iPod/i.test(
+                                        navigator.userAgent
+                                      );
+                                      if (isIOS) {
+                                        window.open(record.dataUrl, "_blank");
+                                      } else {
+                                        const link =
+                                          document.createElement("a");
+                                        link.href = record.dataUrl;
+                                        link.download = record.name;
+                                        link.click();
+                                      }
+                                    }}
+                                  >
+                                    Download
+                                  </Button>
+                                </Tooltip>
+                              </Space>
+                            </div>
+                          </div>
+                        }
+                      />
+                    </Card>
+                  </List.Item>
+                )}
+              />
+            ) : (
+              <Empty
+                image={Empty.PRESENTED_IMAGE_SIMPLE}
+                description="No documents available yet"
+                style={{ margin: "40px 0" }}
+              />
+            )}
+          </Card>
+        )}
+        {/* Tasks - Only show if worker is registered */}
+        {worker && workerTasks.length > 0 && (
+          <Card
+            title={
+              <Space>
+                <CheckCircleOutlined
+                  style={{ fontSize: "20px", color: "#faad14" }}
+                />
+                <span style={{ fontSize: "18px", fontWeight: "600" }}>
+                  Your Tasks
+                </span>
+                <Badge
+                  count={workerTasks.length}
+                  style={{ backgroundColor: "#faad14" }}
+                />
+              </Space>
+            }
+            className="mb-6 shadow-lg"
+            style={{ borderRadius: "12px" }}
+          >
+            <List
+              dataSource={workerTasks}
+              renderItem={(task) => (
+                <List.Item>
+                  <Card
+                    size="small"
+                    className="w-full"
+                    style={{
+                      borderLeft: `4px solid ${
+                        task.status === "completed" ? "#52c41a" : "#faad14"
+                      }`,
+                      borderRadius: "8px",
+                    }}
+                  >
+                    <Row align="middle" gutter={[16, 8]}>
+                      <Col flex="auto">
+                        <div className="font-semibold text-base mb-1">
+                          {task.title}
+                        </div>
+                        {task.deadline && (
+                          <div className="text-sm text-gray-500">
+                            <CalendarOutlined className="mr-1" />
+                            Deadline: {task.deadline}
+                          </div>
+                        )}
+                      </Col>
+                      <Col>
+                        {task.status === "completed" ? (
+                          <Tag
+                            color="success"
+                            icon={<CheckCircleOutlined />}
+                            style={{ fontSize: "14px", padding: "4px 12px" }}
+                          >
+                            Completed
+                          </Tag>
+                        ) : (
+                          <Tag
+                            color="warning"
+                            icon={<ClockCircleOutlined />}
+                            style={{ fontSize: "14px", padding: "4px 12px" }}
+                          >
+                            Pending
+                          </Tag>
+                        )}
+                      </Col>
+                    </Row>
+                  </Card>
+                </List.Item>
+              )}
+            />
+          </Card>
+        )}
 
-      {/* Stats - Only show if worker is registered */}
-      {worker && (
-        <Row gutter={[16, 16]} className="mb-6">
-          <Col xs={24} md={8}>
-            <Card>
-              <Statistic
-                title="Total Earned"
-                value={totalEarned}
-                prefix="₹"
-                valueStyle={{ color: "#52c41a" }}
+        {/* Messages - Only show if worker is registered */}
+        {worker ? (
+          <Card
+            title={
+              <Space>
+                <MessageOutlined
+                  style={{ fontSize: "20px", color: "#722ed1" }}
+                />
+                <span style={{ fontSize: "18px", fontWeight: "600" }}>
+                  Messages
+                </span>
+                <Badge
+                  count={messages.length}
+                  style={{ backgroundColor: "#722ed1" }}
+                />
+              </Space>
+            }
+            className="shadow-lg"
+            style={{ borderRadius: "12px" }}
+          >
+            <div className="mb-4 max-h-96 overflow-y-auto p-4 bg-gray-50 rounded-lg">
+              {messages.length > 0 ? (
+                <List
+                  dataSource={messages}
+                  renderItem={(msg) => (
+                    <List.Item style={{ border: "none", padding: "12px 0" }}>
+                      <Card
+                        size="small"
+                        className="w-full shadow-sm"
+                        style={{ borderRadius: "8px" }}
+                      >
+                        <div
+                          className="mb-2 p-3 rounded"
+                          style={{
+                            background:
+                              "linear-gradient(135deg, #e6f7ff 0%, #bae7ff 100%)",
+                            borderLeft: "3px solid #1890ff",
+                          }}
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <span className="text-xs text-gray-500 font-semibold">
+                              YOUR MESSAGE
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              <CalendarOutlined className="mr-1" />
+                              {new Date(msg.timestamp).toLocaleDateString(
+                                "en-IN",
+                                {
+                                  dateStyle: "medium",
+                                  timeStyle: "short",
+                                }
+                              )}
+                            </span>
+                          </div>
+                          <div className="text-gray-800">{msg.message}</div>
+                        </div>
+                        {msg.reply && (
+                          <div
+                            className="p-3 rounded"
+                            style={{
+                              background:
+                                "linear-gradient(135deg, #f6ffed 0%, #d9f7be 100%)",
+                              borderLeft: "3px solid #52c41a",
+                            }}
+                          >
+                            <div className="flex items-center mb-2">
+                              <CheckCircleOutlined
+                                style={{ color: "#52c41a", marginRight: "8px" }}
+                              />
+                              <span className="text-xs text-green-700 font-semibold">
+                                OWNER'S REPLY
+                              </span>
+                            </div>
+                            <div className="text-gray-800">{msg.reply}</div>
+                            <div className="text-xs text-gray-500 mt-2">
+                              <CalendarOutlined className="mr-1" />
+                              {new Date(msg.replyTime).toLocaleDateString(
+                                "en-IN",
+                                {
+                                  dateStyle: "medium",
+                                  timeStyle: "short",
+                                }
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </Card>
+                    </List.Item>
+                  )}
+                />
+              ) : (
+                <Empty
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                  description="No messages yet"
+                  style={{ margin: "20px 0" }}
+                />
+              )}
+            </div>
+
+            <Divider style={{ margin: "16px 0" }}>Send New Message</Divider>
+
+            <Space.Compact style={{ width: "100%" }} size="large">
+              <Input
+                placeholder="Type your message to the owner..."
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                onPressEnter={handleSendMessage}
+                disabled={sendingMessage}
+                size="large"
+                style={{ borderRadius: "8px 0 0 8px" }}
               />
-            </Card>
-          </Col>
-          <Col xs={24} md={8}>
-            <Card>
-              <Statistic
-                title="Tasks Assigned"
-                value={workerTasks.length}
-                valueStyle={{ color: "#1890ff" }}
-              />
-            </Card>
-          </Col>
-          <Col xs={24} md={8}>
-            <Card>
-              <Statistic
-                title="Tasks Completed"
-                value={completedTasks}
-                suffix={`/ ${workerTasks.length}`}
-                valueStyle={{ color: "#faad14" }}
-              />
-            </Card>
-          </Col>
-        </Row>
-      )}
-      {/* Payment History - Only show if worker is registered */}
-      {worker ? (
-        <Card
-          title="Your Payment History"
-          className="mb-6"
-          extra={
-            <div className="w-full sm:w-auto">
               <Button
                 type="primary"
-                icon={<DownloadOutlined />}
-                onClick={downloadPaymentPDF}
-                disabled={workerPayments.length === 0}
-                className="w-full sm:w-auto"
-                size="middle"
+                icon={<SendOutlined />}
+                onClick={handleSendMessage}
+                loading={sendingMessage}
+                disabled={!messageText.trim()}
+                size="large"
+                style={{ borderRadius: "0 8px 8px 0", minWidth: "100px" }}
               >
-                Download PDF
+                Send
               </Button>
-            </div>
-          }
-        >
-          <div id="payment-history-pdf" className="bg-white p-4 sm:p-6">
-            {/* PDF Header with Worker Details */}
-            <div className="mb-6 pb-4 border-b-2 border-gray-300">
-              <h2 className="text-2xl font-bold mb-2">{worker.name}</h2>
-              <p className="text-lg text-gray-700">📱 Mobile: {worker.phone}</p>
-              <p className="text-lg text-gray-800 font-semibold mt-2">
-                Total Paid: ₹{totalEarned}
+            </Space.Compact>
+          </Card>
+        ) : (
+          <Card
+            className="border-orange-200 bg-orange-50 shadow-lg"
+            style={{ borderRadius: "12px" }}
+          >
+            <Empty
+              description="Worker Profile Not Found"
+              style={{ marginTop: 40, marginBottom: 40 }}
+            >
+              <p className="text-orange-700 text-center font-semibold text-lg">
+                Your worker ID "{workerId}" is not registered in the system.
               </p>
-              <p className="text-sm text-gray-600 mt-1">
-                Generated on: {new Date().toLocaleDateString()}
+              <p className="text-orange-600 text-center text-sm mt-2">
+                Please contact the admin to add your profile to the workers
+                list.
               </p>
-            </div>
-
-            {/* Payment Table */}
-            {workerPayments.length > 0 ? (
-              <div className="overflow-x-auto">
-                <Table
-                  rowKey="id"
-                  dataSource={workerPayments}
-                  columns={[
-                    {
-                      title: "Amount",
-                      dataIndex: "amount",
-                      render: (v) => `₹${v}`,
-                    },
-                    { title: "Date", dataIndex: "date" },
-                    { title: "Note", dataIndex: "note" },
-                  ]}
-                  summary={() => (
-                    <Table.Summary>
-                      <Table.Summary.Row>
-                        <Table.Summary.Cell
-                          index={0}
-                          colSpan={2}
-                          style={{ textAlign: "right", fontWeight: 700 }}
-                        >
-                          Total Paid
-                        </Table.Summary.Cell>
-                        <Table.Summary.Cell
-                          index={2}
-                          style={{ fontWeight: 700 }}
-                        >
-                          ₹{totalEarned}
-                        </Table.Summary.Cell>
-                      </Table.Summary.Row>
-                    </Table.Summary>
-                  )}
-                  scroll={{ x: "max-content" }}
-                  pagination={false}
-                  bordered
-                />
-              </div>
-            ) : (
-              <p className="text-gray-500">No payments yet.</p>
-            )}
-          </div>
-        </Card>
-      ) : null}
-      {/* Public Documents Section */}
-      {worker && (
-        <Card title="Documents" className="mb-6">
-          {workerDocuments.length > 0 ? (
-            <Table
-              rowKey="id"
-              dataSource={workerDocuments}
-              columns={[
-                {
-                  title: "File",
-                  dataIndex: "name",
-                },
-                {
-                  title: "Type",
-                  dataIndex: "fileType",
-                  render: (t) => <Tag>{t}</Tag>,
-                },
-                {
-                  title: "Actions",
-                  render: (_, record) => (
-                    <Space>
-                      <Button
-                        size="small"
-                        onClick={() => {
-                          setPreviewDoc(record);
-                          setPreviewOpen(true);
-                        }}
-                      >
-                        Preview
-                      </Button>
-
-                      <Button
-                        size="small"
-                        type="primary"
-                        onClick={() => {
-                          if (!record.dataUrl) {
-                            message.error("File data not available");
-                            return;
-                          }
-
-                          const isIOS = /iPhone|iPad|iPod/i.test(
-                            navigator.userAgent
-                          );
-
-                          if (isIOS) {
-                            window.open(record.dataUrl, "_blank");
-                          } else {
-                            const link = document.createElement("a");
-                            link.href = record.dataUrl;
-                            link.download = record.name;
-                            link.click();
-                          }
-                        }}
-                      >
-                        Download
-                      </Button>
-                    </Space>
-                  ),
-                },
-              ]}
-              pagination={false}
-            />
-          ) : (
-            <p className="text-gray-500">No public documents available.</p>
-          )}
-        </Card>
-      )}
-      {/* Changes/Updates Report - Only show if worker is registered */}
-      {worker ? (
-        <Card
+            </Empty>
+          </Card>
+        )}
+        <Modal
+          open={previewOpen}
           title={
             <Space>
-              <span>Recent Changes & Updates</span>
-              <Popover
-                content="Shows recent updates to your tasks and payments made by the owner"
-                title="What is this?"
-                trigger="hover"
-              >
-                <InfoCircleOutlined
-                  style={{ cursor: "pointer", color: "#1890ff" }}
-                />
-              </Popover>
+              <FileTextOutlined style={{ color: "#1890ff" }} />
+              <span style={{ fontWeight: "600" }}>{previewDoc?.name}</span>
             </Space>
           }
-          className="mb-6"
-        >
-          {changesReport.length > 0 ? (
-            <Timeline
-              items={changesReport.map((change) => ({
-                color:
-                  change.type === "task"
-                    ? "#1890ff"
-                    : change.type === "payment"
-                    ? "#52c41a"
-                    : "gray",
-                children: (
-                  <div>
-                    <p className="font-semibold text-gray-800">
-                      {change.action}
-                    </p>
-                    <p className="text-gray-600 text-sm">
-                      {change.description}
-                    </p>
-                    <p className="text-gray-400 text-xs mt-1">
-                      {change.date.toLocaleDateString()} (
-                      {change.daysAgo === 0
-                        ? "Today"
-                        : change.daysAgo === 1
-                        ? "Yesterday"
-                        : `${change.daysAgo} days ago`}
-                      )
-                    </p>
-                  </div>
-                ),
-              }))}
-            />
-          ) : (
-            <Empty
-              description="No recent changes"
-              style={{ marginTop: 40, marginBottom: 40 }}
-            />
-          )}
-        </Card>
-      ) : (
-        <Card className="mb-6 border-orange-200 bg-orange-50">
-          <Empty
-            description="Worker Profile Not Found"
-            style={{ marginTop: 40, marginBottom: 40 }}
-          >
-            <p className="text-orange-700 text-center font-semibold">
-              Your worker ID "{workerId}" is not registered in the admin system.
-            </p>
-            <p className="text-orange-600 text-center text-sm mt-2">
-              The system matches your login ID with the worker NAME from the
-              admin's Workers list.
-            </p>
-          </Empty>
-        </Card>
-      )}
-
-      {/* Tasks - Only show if worker is registered */}
-      {worker ? (
-        <Card title="Your Tasks" className="mb-6">
-          {workerTasks.length > 0 ? (
-            <div style={{ overflowX: "auto" }}>
-              <Table
-                rowKey="id"
-                dataSource={workerTasks}
-                columns={[
-                  { title: "Task", dataIndex: "title" },
-                  {
-                    title: "Status",
-                    dataIndex: "status",
-                    render: (s) =>
-                      s === "completed" ? (
-                        <Tag color="green">Completed</Tag>
-                      ) : (
-                        <Tag color="orange">Pending</Tag>
-                      ),
-                  },
-                  { title: "Deadline", dataIndex: "deadline" },
-                ]}
-                scroll={{ x: "max-content" }}
-                pagination={false}
-              />
-            </div>
-          ) : (
-            <p className="text-gray-500">No tasks assigned yet.</p>
-          )}
-        </Card>
-      ) : null}
-
-      {/* Messages - Only show if worker is registered */}
-      {worker ? (
-        <Card title="Messages to Owner">
-          <div className="mb-4 max-h-96 overflow-y-auto border rounded p-3 bg-gray-50">
-            {messages.length > 0 ? (
-              messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className="mb-3 pb-3 border-b last:border-b-0"
-                >
-                  <p className="text-xs text-gray-500">
-                    {new Date(msg.timestamp).toLocaleDateString()}
-                  </p>
-                  <p className="text-sm">{msg.message}</p>
-                  {msg.reply && (
-                    <div className="mt-2 p-2 bg-blue-50 rounded border-l-4 border-blue-400">
-                      <p className="text-xs font-semibold text-blue-800">
-                        Owner's Reply:
-                      </p>
-                      <p className="text-sm text-blue-900">{msg.reply}</p>
-                    </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 text-sm">No messages yet.</p>
-            )}
-          </div>
-
-          <Space.Compact style={{ width: "100%" }} className="flex">
-            <Input
-              placeholder="Send a message to the owner..."
-              value={messageText}
-              onChange={(e) => setMessageText(e.target.value)}
-              onPressEnter={handleSendMessage}
-              disabled={sendingMessage}
-            />
+          footer={[
             <Button
-              type="primary"
-              onClick={handleSendMessage}
-              loading={sendingMessage}
+              key="close"
+              onClick={() => setPreviewOpen(false)}
+              size="large"
             >
-              Send
-            </Button>
-          </Space.Compact>
-        </Card>
-      ) : null}
-      <Modal
-        open={previewOpen}
-        title={previewDoc?.name}
-        footer={null}
-        onCancel={() => setPreviewOpen(false)}
-        width={900}
-        bodyStyle={{ maxHeight: "80vh", overflowY: "auto" }}
-      >
-        {previewDoc && (
-          <div className="bg-gray-100 p-4 rounded">
-            {previewDoc.fileType === "Image" ? (
-              <img
-                src={previewDoc.dataUrl}
-                alt={previewDoc.name}
-                style={{ maxWidth: "100%", display: "block", margin: "0 auto" }}
-              />
-            ) : previewDoc.fileType === "PDF" ? (
-              <iframe
-                src={previewDoc.dataUrl}
-                title={previewDoc.name}
-                style={{
-                  width: "100%",
-                  height: "600px",
-                  border: "none",
-                  borderRadius: "4px",
-                }}
-              />
-            ) : (
-              <p className="text-center text-gray-600 mt-4">
-                Preview not available. Please download the file.
-              </p>
-            )}
-          </div>
-        )}
-      </Modal>
+              Close
+            </Button>,
+            <Button
+              key="download"
+              type="primary"
+              icon={<DownloadOutlined />}
+              onClick={() => {
+                if (!previewDoc?.dataUrl) return;
+                const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+                if (isIOS) {
+                  window.open(previewDoc.dataUrl, "_blank");
+                } else {
+                  const link = document.createElement("a");
+                  link.href = previewDoc.dataUrl;
+                  link.download = previewDoc.name;
+                  link.click();
+                }
+              }}
+              size="large"
+            >
+              Download
+            </Button>,
+          ]}
+          onCancel={() => setPreviewOpen(false)}
+          width={900}
+          bodyStyle={{ maxHeight: "80vh", overflowY: "auto", padding: "24px" }}
+        >
+          {previewDoc && (
+            <div className="bg-gray-50 p-4 rounded-lg">
+              {previewDoc.fileType === "Image" ? (
+                <img
+                  src={previewDoc.dataUrl}
+                  alt={previewDoc.name}
+                  style={{
+                    maxWidth: "100%",
+                    display: "block",
+                    margin: "0 auto",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                  }}
+                />
+              ) : previewDoc.fileType === "PDF" ? (
+                <iframe
+                  src={previewDoc.dataUrl}
+                  title={previewDoc.name}
+                  style={{
+                    width: "100%",
+                    height: "600px",
+                    border: "none",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                  }}
+                />
+              ) : (
+                <Empty
+                  description="Preview not available for this file type. Please download to view."
+                  style={{ margin: "60px 0" }}
+                />
+              )}
+            </div>
+          )}
+        </Modal>
+      </div>
     </div>
   );
 }
