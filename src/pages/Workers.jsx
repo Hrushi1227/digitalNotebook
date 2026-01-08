@@ -27,7 +27,12 @@ export default function Workers() {
   useEffect(() => {
     if (open) {
       if (edit) {
-        form.setFieldsValue(edit);
+        // Strip +91 prefix if present for editing
+        const phoneValue = edit.phone?.replace(/^\+91\s*/, "") || edit.phone;
+        form.setFieldsValue({
+          ...edit,
+          phone: phoneValue,
+        });
       } else {
         form.resetFields();
       }
@@ -46,7 +51,11 @@ export default function Workers() {
         </Link>
       ),
     },
-    { title: "Phone", dataIndex: "phone" },
+    {
+      title: "Phone",
+      dataIndex: "phone",
+      render: (phone) => (phone ? `+91${phone}` : "-"),
+    },
     { title: "Profession", dataIndex: "profession" },
     { title: "Rates", dataIndex: "rate" },
 
@@ -122,12 +131,18 @@ export default function Workers() {
           form={form}
           layout="vertical"
           onFinish={async (vals) => {
+            // Ensure phone is stored as 10 digits only (strip any +91 prefix)
+            const cleanedVals = {
+              ...vals,
+              phone: vals.phone?.replace(/^\+91\s*/, "") || vals.phone,
+            };
+
             if (edit) {
-              await updateItem("workers", edit.id, vals);
-              dispatch(updateWorker({ id: edit.id, ...vals }));
+              await updateItem("workers", edit.id, cleanedVals);
+              dispatch(updateWorker({ id: edit.id, ...cleanedVals }));
             } else {
-              const res = await addItem("workers", vals);
-              dispatch(addWorker({ id: res.id, ...vals }));
+              const res = await addItem("workers", cleanedVals);
+              dispatch(addWorker({ id: res.id, ...cleanedVals }));
             }
             setOpen(false);
             setEdit(null);
@@ -138,8 +153,20 @@ export default function Workers() {
             <Input placeholder="Worker Name" />
           </Form.Item>
 
-          <Form.Item name="phone" label="Phone">
-            <Input placeholder="Phone Number" />
+          <Form.Item
+            name="phone"
+            label="Phone"
+            rules={[
+              { required: true, message: "Please enter phone number" },
+              { pattern: /^\d{10}$/, message: "Enter valid 10-digit number" },
+            ]}
+          >
+            <Input
+              placeholder="10-digit mobile number"
+              prefix="+91"
+              maxLength={10}
+              inputMode="numeric"
+            />
           </Form.Item>
 
           <Form.Item name="profession" label="Profession">

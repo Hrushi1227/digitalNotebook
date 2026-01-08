@@ -122,7 +122,7 @@ export default function WorkerDetails() {
           <h1>Payment Bill</h1>
           <div class="header-info">
             <p><strong>Worker Name:</strong> ${worker.name}</p>
-            <p><strong>Phone:</strong> ${worker.phone}</p>
+            <p><strong>Phone:</strong> +91${worker.phone}</p>
             <p><strong>Profession:</strong> ${worker.profession}</p>
             <p><strong>Daily Rate:</strong> ₹${worker.rate}</p>
             <p><strong>Bill Date:</strong> ${currentDate}</p>
@@ -218,7 +218,7 @@ export default function WorkerDetails() {
       <Card className="mb-3 sm:mb-6 shadow">
         <Descriptions title="Worker Details" bordered column={1} size="small">
           <Descriptions.Item label="Name">{worker.name}</Descriptions.Item>
-          <Descriptions.Item label="Phone">{worker.phone}</Descriptions.Item>
+          <Descriptions.Item label="Phone">+91{worker.phone}</Descriptions.Item>
           <Descriptions.Item label="Profession">
             {worker.profession}
           </Descriptions.Item>
@@ -255,12 +255,17 @@ export default function WorkerDetails() {
           layout="vertical"
           initialValues={{
             name: worker.name,
-            phone: worker.phone,
+            phone: worker.phone?.replace(/^\+91\s*/, "") || worker.phone,
             rate: worker.rate,
             profession: worker.profession,
           }}
           onFinish={async (vals) => {
-            await updateItem("workers", worker.id, vals);
+            // Ensure phone is stored as 10 digits only
+            const cleanedVals = {
+              ...vals,
+              phone: vals.phone?.replace(/^\+91\s*/, "") || vals.phone,
+            };
+            await updateItem("workers", worker.id, cleanedVals);
             setOpen(false);
           }}
         >
@@ -268,8 +273,20 @@ export default function WorkerDetails() {
             <Input />
           </Form.Item>
 
-          <Form.Item name="phone" label="Phone">
-            <Input />
+          <Form.Item
+            name="phone"
+            label="Phone"
+            rules={[
+              { required: true, message: "Please enter phone number" },
+              { pattern: /^\d{10}$/, message: "Enter valid 10-digit number" },
+            ]}
+          >
+            <Input
+              placeholder="10-digit mobile number"
+              prefix="+91"
+              maxLength={10}
+              inputMode="numeric"
+            />
           </Form.Item>
 
           <Form.Item name="profession" label="Profession">

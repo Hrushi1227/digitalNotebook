@@ -1,4 +1,14 @@
-import { Card, Col, Empty, Progress, Row, Statistic, Table, Tag } from "antd";
+import {
+  Card,
+  Col,
+  Empty,
+  Progress,
+  Row,
+  Statistic,
+  Table,
+  Tag,
+  Tooltip,
+} from "antd";
 import { useSelector } from "react-redux";
 import { Link } from "react-router-dom";
 import PageHeader from "../components/common/PageHeader";
@@ -256,11 +266,46 @@ export default function WorkProgress() {
                   />
                 </Col>
                 <Col xs={12}>
-                  <Statistic
-                    title="Payments"
-                    value={payments.length}
-                    valueStyle={{ fontSize: "18px" }}
-                  />
+                  <Tooltip
+                    title={
+                      <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+                        <div
+                          style={{ fontWeight: "bold", marginBottom: "8px" }}
+                        >
+                          Payment Breakdown:
+                        </div>
+                        <ul style={{ paddingLeft: "20px", margin: 0 }}>
+                          {payments.map((p, idx) => (
+                            <li key={idx} style={{ marginBottom: "4px" }}>
+                              ₹{Number(p.amount || 0).toLocaleString()} -{" "}
+                              {workers.find((w) => w.id === p.workerId)?.name ||
+                                "Unknown"}{" "}
+                              ({p.date})
+                            </li>
+                          ))}
+                        </ul>
+                        <div
+                          style={{
+                            marginTop: "8px",
+                            fontWeight: "bold",
+                            borderTop: "1px solid #ddd",
+                            paddingTop: "8px",
+                          }}
+                        >
+                          Total: ₹{totalPaid.toLocaleString()}
+                        </div>
+                      </div>
+                    }
+                    overlayStyle={{ maxWidth: "400px" }}
+                  >
+                    <div style={{ cursor: "pointer" }}>
+                      <Statistic
+                        title="Payments"
+                        value={payments.length}
+                        valueStyle={{ fontSize: "18px" }}
+                      />
+                    </div>
+                  </Tooltip>
                 </Col>
                 <Col xs={12}>
                   <Statistic

@@ -1,5 +1,4 @@
 import {
-  BarChartOutlined,
   DashboardOutlined,
   LogoutOutlined,
   MenuOutlined,
@@ -29,7 +28,6 @@ import UniversalLogin from "./pages/UniversalLogin";
 import WorkerDetails from "./pages/WorkerDetails";
 import WorkerPortal from "./pages/WorkerPortal";
 import Workers from "./pages/Workers";
-import WorkProgress from "./pages/WorkProgress";
 import {
   logout,
   selectIsAuthenticated,
@@ -65,11 +63,6 @@ const items = [
     key: "/payments",
     icon: <WalletOutlined />,
     label: <Link to="/payments">Payments</Link>,
-  },
-  {
-    key: "/progress",
-    icon: <BarChartOutlined />,
-    label: <Link to="/progress">Work Progress</Link>,
   },
   {
     key: "/messages",
@@ -183,7 +176,6 @@ export default function App() {
                 <Route path="/materials" element={<Materials />} />
                 <Route path="/documents" element={<Documents />} />
                 <Route path="/payments" element={<Payments />} />
-                <Route path="/progress" element={<WorkProgress />} />
                 <Route path="/messages" element={<Messages />} />
               </Routes>
             </div>
@@ -255,7 +247,6 @@ export default function App() {
               <Route path="/materials" element={<Materials />} />
               <Route path="/documents" element={<Documents />} />
               <Route path="/payments" element={<Payments />} />
-              <Route path="/progress" element={<WorkProgress />} />
               <Route path="/messages" element={<Messages />} />
             </Routes>
           </div>
