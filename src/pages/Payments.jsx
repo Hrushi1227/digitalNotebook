@@ -1,9 +1,12 @@
 import {
   CalendarOutlined,
   ClearOutlined,
+  DeleteOutlined,
   DollarOutlined,
   DownloadOutlined,
+  EditOutlined,
   FallOutlined,
+  MoreOutlined,
   RiseOutlined,
   SearchOutlined,
   UserOutlined,
@@ -15,6 +18,7 @@ import {
   Card,
   Col,
   DatePicker,
+  Dropdown,
   Form,
   Input,
   InputNumber,
@@ -42,11 +46,11 @@ import {
   addPayment,
   deletePayment,
   selectPayments,
+  updatePayment,
 } from "../store/paymentsSlice";
 import { selectWorkers } from "../store/workersSlice";
 
-import ProtectedAction from "../components/common/ProtectedAction";
-import { addItem, deleteItem } from "../firebaseService";
+import { addItem, deleteItem, updateItem } from "../firebaseService";
 
 export default function Payments() {
   const payments = useSelector(selectPayments);
@@ -54,6 +58,7 @@ export default function Payments() {
   const dispatch = useDispatch();
 
   const [open, setOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState(null);
   const [form] = Form.useForm();
   const [searchText, setSearchText] = useState("");
   const [selectedWorker, setSelectedWorker] = useState(null);
@@ -324,24 +329,60 @@ export default function Payments() {
       ),
     },
     {
-      title: "Action",
-      render: (_, r) => (
-        <ProtectedAction
-          title="Passcode required to delete"
-          onAuthorized={() => {
-            Modal.confirm({
-              title: "Delete payment?",
-              onOk: async () => {
-                await deleteItem("payments", r.id);
-                dispatch(deletePayment(r.id));
+      title: "Actions",
+      width: 100,
+      fixed: "right",
+      render: (_, record) => (
+        <Dropdown
+          menu={{
+            items: [
+              {
+                key: "edit",
+                label: "Edit Payment",
+                icon: <EditOutlined style={{ color: "#1890ff" }} />,
+                onClick: () => {
+                  setEditingPayment(record);
+                  form.setFieldsValue({
+                    workerId: record.workerId,
+                    amount: record.amount,
+                    date: dayjs(record.date),
+                    note: record.note || "",
+                  });
+                  setOpen(true);
+                },
               },
-            });
+              {
+                type: "divider",
+              },
+              {
+                key: "delete",
+                label: "Delete Payment",
+                icon: <DeleteOutlined style={{ color: "#ff4d4f" }} />,
+                danger: true,
+                onClick: () => {
+                  Modal.confirm({
+                    title: "Delete Payment?",
+                    content: `Are you sure you want to delete this ₹${record.amount} payment?`,
+                    okText: "Yes, Delete",
+                    okType: "danger",
+                    cancelText: "Cancel",
+                    onOk: async () => {
+                      await deleteItem("payments", record.id);
+                      dispatch(deletePayment(record.id));
+                    },
+                  });
+                },
+              },
+            ],
           }}
+          trigger={["click"]}
         >
-          <Button danger size="small">
-            Delete
-          </Button>
-        </ProtectedAction>
+          <Button
+            type="text"
+            icon={<MoreOutlined style={{ fontSize: "18px" }} />}
+            className="hover:bg-gray-100"
+          />
+        </Dropdown>
       ),
     },
   ];
@@ -577,16 +618,25 @@ export default function Payments() {
         </Card>
       </div>
 
-      {/* Add Payment Modal */}
+      {/* Add/Edit Payment Modal */}
       <Modal
         open={open}
-        title="💰 Record New Payment"
+        title={
+          <Space>
+            {editingPayment ? <EditOutlined /> : <WalletOutlined />}
+            <span>
+              {editingPayment ? "Edit Payment" : "Record New Payment"}
+            </span>
+          </Space>
+        }
         onCancel={() => {
           setOpen(false);
+          setEditingPayment(null);
           form.resetFields();
         }}
         onOk={() => document.getElementById("paySubmitBtn").click()}
         width={600}
+        okText={editingPayment ? "Update Payment" : "Record Payment"}
       >
         <Form
           form={form}
@@ -598,12 +648,21 @@ export default function Payments() {
               amount: vals.amount,
               note: vals.note || "",
               date: vals.date.format("YYYY-MM-DD"),
-              createdAt: new Date().toISOString(),
+              createdAt: editingPayment?.createdAt || new Date().toISOString(),
             };
-            const res = await addItem("payments", payload);
-            dispatch(addPayment({ id: res.id, ...payload }));
+
+            if (editingPayment) {
+              // Update existing payment
+              await updateItem("payments", editingPayment.id, payload);
+              dispatch(updatePayment({ id: editingPayment.id, ...payload }));
+            } else {
+              // Add new payment
+              const res = await addItem("payments", payload);
+              dispatch(addPayment({ id: res.id, ...payload }));
+            }
 
             setOpen(false);
+            setEditingPayment(null);
             form.resetFields();
           }}
         >
@@ -679,10 +738,20 @@ export default function Payments() {
             />
           </Form.Item>
 
-          <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-700">
-            <strong>💡 Reminder:</strong> Always record payments immediately to
-            maintain accurate financial records. Add notes for future reference.
-          </div>
+          {!editingPayment && (
+            <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-700">
+              <strong>💡 Reminder:</strong> Always record payments immediately
+              to maintain accurate financial records. Add notes for future
+              reference.
+            </div>
+          )}
+
+          {editingPayment && (
+            <div className="bg-amber-50 border border-amber-200 rounded p-3 text-sm text-amber-700">
+              <strong>⚠️ Note:</strong> You are editing an existing payment
+              record. Make sure all changes are accurate.
+            </div>
+          )}
 
           <button id="paySubmitBtn" type="submit" className="hidden" />
         </Form>

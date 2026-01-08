@@ -26,9 +26,16 @@ const paymentsSlice = createSlice({
     deletePayment(state, action) {
       return state.filter((p) => p.id !== action.payload);
     },
+    updatePayment(state, action) {
+      const index = state.findIndex((p) => p.id === action.payload.id);
+      if (index >= 0) {
+        state[index] = { ...state[index], ...action.payload };
+      }
+    },
   },
 });
 
-export const { setAll, addPayment, deletePayment } = paymentsSlice.actions;
+export const { setAll, addPayment, deletePayment, updatePayment } =
+  paymentsSlice.actions;
 export const selectPayments = (s) => s.payments;
 export default paymentsSlice.reducer;
