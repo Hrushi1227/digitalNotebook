@@ -5,6 +5,7 @@ import documentsReducer from "./documentsSlice";
 import materialsReducer from "./materialsSlice";
 import messagesReducer from "./messagesSlice";
 import paymentsReducer from "./paymentsSlice";
+import tasksReducer from "./tasksSlice";
 import workersReducer from "./workersSlice";
 
 import { listenCollection, loadCollection } from "../firebaseService";
@@ -13,6 +14,7 @@ const store = configureStore({
   reducer: {
     auth: authReducer,
     workers: workersReducer,
+    tasks: tasksReducer,
     materials: materialsReducer,
     payments: paymentsReducer,
     documents: documentsReducer,
