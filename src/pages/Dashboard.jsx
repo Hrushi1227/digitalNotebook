@@ -94,89 +94,105 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-semibold mb-6">Dashboard Overview</h1>
+    <div className="p-0 sm:p-2 md:p-4">
+      <h1 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 px-2 sm:px-0">
+        Dashboard Overview
+      </h1>
 
       {/* KPI CARDS */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} md={6}>
-          <Card>
-            <Statistic
-              title="Material Spend"
-              value={materialSpend}
-              prefix={<ShoppingCartOutlined />}
-              suffix="₹"
-            />
-          </Card>
-        </Col>
+      <div className="px-2 sm:px-0">
+        <Row gutter={[8, 8]}>
+          <Col xs={24} md={6}>
+            <Card>
+              <Statistic
+                title="Material Spend"
+                value={materialSpend}
+                prefix={<ShoppingCartOutlined />}
+                suffix="₹"
+              />
+            </Card>
+          </Col>
 
-        <Col xs={24} md={6}>
-          <Card>
-            <Statistic
-              title="Labor Spend"
-              value={laborSpend}
-              prefix={<TeamOutlined />}
-              suffix="₹"
-            />
-          </Card>
-        </Col>
+          <Col xs={24} md={6}>
+            <Card>
+              <Statistic
+                title="Labor Spend"
+                value={laborSpend}
+                prefix={<TeamOutlined />}
+                suffix="₹"
+              />
+            </Card>
+          </Col>
 
-        <Col xs={24} md={6}>
-          <Card>
-            <Statistic
-              title="Total Spend"
-              value={totalSpend}
-              prefix={<WalletOutlined />}
-              suffix="₹"
-              valueStyle={{ color: "#cf1322" }}
-            />
-          </Card>
-        </Col>
+          <Col xs={24} md={6}>
+            <Card>
+              <Statistic
+                title="Total Spend"
+                value={totalSpend}
+                prefix={<WalletOutlined />}
+                suffix="₹"
+                valueStyle={{ color: "#cf1322" }}
+              />
+            </Card>
+          </Col>
 
-        <Col xs={24} md={6}>
-          <Card>
-            <Statistic
-              title="Documents"
-              value={documents.length}
-              prefix={<FileTextOutlined />}
-            />
-          </Card>
-        </Col>
-      </Row>
+          <Col xs={24} md={6}>
+            <Card>
+              <Statistic
+                title="Documents"
+                value={documents.length}
+                prefix={<FileTextOutlined />}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </div>
 
       {/* MATERIAL BREAKDOWN */}
-      <h2 className="text-xl font-semibold mt-10 mb-4">
+      <h2 className="text-lg sm:text-xl font-semibold mt-6 sm:mt-10 mb-3 sm:mb-4 px-2 sm:px-0">
         Material Cost Breakdown
       </h2>
 
-      <Card>
-        {materialByCategory.length ? (
-          <Table
-            rowKey="category"
-            dataSource={materialByCategory}
-            columns={materialColumns}
-            pagination={false}
-          />
-        ) : (
-          <Empty description="No material data" />
-        )}
-      </Card>
+      <div className="px-2 sm:px-0">
+        <Card>
+          {materialByCategory.length ? (
+            <div className="overflow-x-auto -mx-6 sm:mx-0">
+              <Table
+                rowKey="category"
+                dataSource={materialByCategory}
+                columns={materialColumns}
+                pagination={false}
+                scroll={{ x: "max-content" }}
+              />
+            </div>
+          ) : (
+            <Empty description="No material data" />
+          )}
+        </Card>
+      </div>
 
       {/* WORKER PAYMENTS */}
-      <h2 className="text-xl font-semibold mt-10 mb-4">Top Paid Workers</h2>
+      <h2 className="text-lg sm:text-xl font-semibold mt-6 sm:mt-10 mb-3 sm:mb-4 px-2 sm:px-0">
+        Top Paid Workers
+      </h2>
 
-      <Card>
-        {workerPayments.length ? (
-          <Table
-            rowKey="workerId"
-            dataSource={workerPayments}
-            columns={workerColumns}
-            pagination={false}
-          />
-        ) : (
-          <Empty description="No worker payments yet" />
-        )}
-      </Card>
+      <div className="px-2 sm:px-0">
+        <Card>
+          {workerPayments.length ? (
+            <div className="overflow-x-auto -mx-6 sm:mx-0">
+              <Table
+                rowKey="workerId"
+                dataSource={workerPayments}
+                columns={workerColumns}
+                pagination={false}
+                scroll={{ x: "max-content" }}
+              />
+            </div>
+          ) : (
+            <Empty description="No worker payments yet" />
+          )}
+        </Card>
+      </div>
     </div>
   );
 }

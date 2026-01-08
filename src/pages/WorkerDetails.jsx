@@ -175,20 +175,25 @@ export default function WorkerDetails() {
   };
 
   return (
-    <div className="p-4">
-      <Space className="mb-4">
-        <Button onClick={() => navigate("/workers")}>Back</Button>
+    <div className="p-2 sm:p-4">
+      <Space className="mb-3 sm:mb-4 flex-wrap">
+        <Button onClick={() => navigate("/workers")} size="small">
+          Back
+        </Button>
 
         <Button
           type="default"
           icon={<PrinterOutlined />}
           onClick={handlePrintBill}
+          size="small"
         >
-          Print Bill
+          <span className="hidden sm:inline">Print Bill</span>
         </Button>
 
         <ProtectedAction onAuthorized={() => setOpen(true)}>
-          <Button type="primary">Edit Worker</Button>
+          <Button type="primary" size="small">
+            Edit
+          </Button>
         </ProtectedAction>
 
         <ProtectedAction
@@ -203,13 +208,15 @@ export default function WorkerDetails() {
             });
           }}
         >
-          <Button danger>Delete</Button>
+          <Button danger size="small">
+            Delete
+          </Button>
         </ProtectedAction>
       </Space>
 
       {/* Worker Details */}
-      <Card className="mb-6 shadow">
-        <Descriptions title="Worker Details" bordered column={1}>
+      <Card className="mb-3 sm:mb-6 shadow">
+        <Descriptions title="Worker Details" bordered column={1} size="small">
           <Descriptions.Item label="Name">{worker.name}</Descriptions.Item>
           <Descriptions.Item label="Phone">{worker.phone}</Descriptions.Item>
           <Descriptions.Item label="Profession">
@@ -226,7 +233,7 @@ export default function WorkerDetails() {
 
       {/* Payments */}
       <Card className="shadow" title="Payment History">
-        <div style={{ overflowX: "auto" }}>
+        <div className="overflow-x-auto -mx-3 sm:mx-0">
           <Table
             rowKey="id"
             dataSource={workerPayments}

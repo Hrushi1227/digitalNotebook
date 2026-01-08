@@ -24,13 +24,56 @@ body,
 
 /* Ensure content doesn't force horizontal scroll on small screens */
 .max-w-7xl {
-  padding-left: 1rem;
-  padding-right: 1rem;
+  padding-left: 0;
+  padding-right: 0;
 }
 
+@media (min-width: 640px) {
+  .max-w-7xl {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+}
+
+/* Mobile optimizations */
 @media (max-width: 768px) {
   .ant-layout-sider {
     z-index: 1000;
+  }
+
+  /* Reduce card padding on mobile */
+  .ant-card-body {
+    padding: 12px !important;
+  }
+
+  /* Better table spacing on mobile */
+  .ant-table {
+    font-size: 13px;
+    width: max-content;
+    min-width: 100%;
+  }
+
+  .ant-table-thead > tr > th {
+    padding: 8px 6px !important;
+  }
+
+  .ant-table-tbody > tr > td {
+    padding: 8px 6px !important;
+  }
+
+  .ant-table-content {
+    overflow-x: auto;
+  }
+
+  /* Prevent buttons from wrapping */
+  .ant-space-item button {
+    white-space: nowrap;
+  }
+
+  /* Make mobile buttons more touch-friendly */
+  .ant-btn-sm {
+    min-height: 32px;
+    padding: 4px 10px;
   }
 }
 
@@ -48,15 +91,7 @@ body,
 
 .ant-table-wrapper table {
   width: 100%;
-  min-width: 0;
-}
-
-/* Allow table cells to wrap instead of forcing horizontal scroll */
-.ant-table-cell,
-.ant-table-thead > tr > th,
-.ant-table-tbody > tr > td {
-  white-space: normal !important;
-  word-break: break-word;
+  min-width: 100%;
 }
 
 /* Ensure drawer content never exceeds viewport */

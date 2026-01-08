@@ -76,26 +76,28 @@ export default function Workers() {
   ];
 
   return (
-    <div className="p-2">
+    <div className="p-0 sm:p-2">
       {/* Header */}
-      <div className="flex justify-between mb-4">
-        <h1 className="text-xl font-semibold">Workers</h1>
+      <div className="flex justify-between mb-3 sm:mb-4 px-2 sm:px-0">
+        <h1 className="text-lg sm:text-xl font-semibold">Workers</h1>
 
         {isAdmin && (
           <Button
             type="primary"
+            size="small"
             onClick={() => {
               setEdit(null);
               setOpen(true);
             }}
           >
-            Add Worker
+            <span className="hidden sm:inline">Add Worker</span>
+            <span className="sm:hidden">Add</span>
           </Button>
         )}
       </div>
 
       {/* Table */}
-      <div style={{ overflowX: "auto" }}>
+      <div className="overflow-x-auto px-2 sm:px-0">
         <Table
           rowKey="id"
           dataSource={workers}

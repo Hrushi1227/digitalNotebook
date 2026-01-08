@@ -70,22 +70,29 @@ export default function Payments() {
   ];
 
   return (
-    <div className="p-2">
-      <div className="flex justify-between mb-4">
-        <div className="mt-4 flex justify-end">
-          <div className="bg-white px-6 py-3 rounded-lg shadow text-lg font-semibold">
-            Total Spent on Workers:{" "}
-            <span className="text-green-600">₹{totalSpent}</span>
+    <div className="p-0 sm:p-2">
+      <div className="flex flex-col sm:flex-row justify-between mb-3 sm:mb-4 gap-2 sm:gap-0 px-2 sm:px-0">
+        <div className="flex justify-end sm:justify-start order-2 sm:order-1">
+          <div className="bg-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg shadow text-sm sm:text-lg font-semibold">
+            Total: <span className="text-green-600">₹{totalSpent}</span>
           </div>
         </div>
-        <h1 className="text-xl font-semibold">Payments</h1>
+        <h1 className="text-lg sm:text-xl font-semibold order-1 sm:order-2">
+          Payments
+        </h1>
 
-        <Button type="primary" onClick={() => setOpen(true)}>
-          Add Payment
+        <Button
+          type="primary"
+          size="small"
+          onClick={() => setOpen(true)}
+          className="order-3"
+        >
+          <span className="hidden sm:inline">Add Payment</span>
+          <span className="sm:hidden">Add</span>
         </Button>
       </div>
 
-      <div style={{ overflowX: "auto" }}>
+      <div className="overflow-x-auto px-2 sm:px-0">
         <Table
           rowKey="id"
           dataSource={paymentsUnique}

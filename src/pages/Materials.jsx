@@ -78,36 +78,36 @@ export default function Materials() {
   const total = materials.reduce((a, m) => a + Number(m.price || 0), 0);
 
   return (
-    <div>
-      <div className="inline-flex items-center gap-3 bg-white border border-gray-200 px-6 py-2.5 rounded-lg shadow-sm">
-        <span className="text-base text-gray-700 font-bold">
-          Total Spent on Materials:
+    <div className="p-0 sm:p-2">
+      <div className="inline-flex items-center gap-2 sm:gap-3 bg-white border border-gray-200 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg shadow-sm mx-2 sm:mx-0 mb-3 sm:mb-0">
+        <span className="text-sm sm:text-base text-gray-700 font-bold">
+          Total Spent:
         </span>
-        <span className="text-lg font-semibold text-green-600">
+        <span className="text-base sm:text-lg font-semibold text-green-600">
           ₹{total.toLocaleString("en-IN")}
         </span>
       </div>
 
-      <div className="bg-white rounded-xl p-4 shadow mb-4">
+      <div className="bg-white rounded-xl p-2 sm:p-4 shadow mb-3 sm:mb-4 mx-2 sm:mx-0 mt-3 sm:mt-4">
         <Button
           type="primary"
+          size="small"
           onClick={() => {
             setEdit(null);
             setOpen(true);
           }}
         >
-          Add Material
+          <span className="hidden sm:inline">Add Material</span>
+          <span className="sm:hidden">Add</span>
         </Button>
       </div>
 
-      <div
-        className="bg-white rounded-xl p-4 shadow"
-        style={{ overflowX: "auto" }}
-      >
+      <div className="bg-white rounded-xl p-2 sm:p-4 shadow overflow-x-auto mx-2 sm:mx-0">
         <Table
           rowKey="id"
           dataSource={materials}
           columns={columns}
+          scroll={{ x: "max-content" }}
           scroll={{ x: "max-content" }}
         />
       </div>

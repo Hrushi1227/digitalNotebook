@@ -144,17 +144,17 @@ export default function App() {
           />
         </Sider>
         <Layout>
-          <Header className="bg-white shadow-sm px-6 flex items-center justify-between">
+          <Header className="bg-white shadow-sm px-2 sm:px-6 flex items-center justify-between">
             <div className="flex items-center">
-              <div className="lg:hidden mr-3">
+              <div className="lg:hidden mr-2">
                 <Button
                   type="text"
                   onClick={() => setCollapsed(!collapsed)}
                   icon={<MenuOutlined />}
                 />
               </div>
-              <div className="text-xl font-semibold">
-                Home Renovation Tracker
+              <div className="text-base sm:text-xl font-semibold">
+                Renovation Tracker
               </div>
             </div>
             <Button
@@ -162,12 +162,20 @@ export default function App() {
               danger
               onClick={handleLogout}
               icon={<LogoutOutlined />}
+              className="hidden sm:inline-flex"
             >
               Logout
             </Button>
+            <Button
+              type="text"
+              danger
+              onClick={handleLogout}
+              icon={<LogoutOutlined />}
+              className="sm:hidden"
+            />
           </Header>
-          <Content className="p-6 bg-gray-50 min-h-screen">
-            <div className="max-w-7xl mx-auto">
+          <Content className="p-2 sm:p-4 md:p-6 bg-gray-50 min-h-screen">
+            <div className="w-full max-w-7xl mx-auto">
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/workers" element={<Workers />} />
