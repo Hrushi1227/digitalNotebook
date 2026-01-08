@@ -23,6 +23,7 @@ import {
 } from "antd";
 import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { Link } from "react-router-dom";
 
 import dayjs from "dayjs";
 
@@ -142,10 +143,15 @@ export default function Payments() {
       render: (id) => {
         const worker = workers.find((w) => w.id === id);
         return worker ? (
-          <Tag color="blue" className="text-sm">
-            <UserOutlined className="mr-1" />
-            {worker.name}
-          </Tag>
+          <Link to={`/workers/${id}`}>
+            <Tag
+              color="blue"
+              className="text-sm cursor-pointer hover:opacity-80"
+            >
+              <UserOutlined className="mr-1" />
+              {worker.name}
+            </Tag>
+          </Link>
         ) : (
           <span className="text-gray-400">Unknown</span>
         );
