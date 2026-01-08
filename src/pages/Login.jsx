@@ -10,7 +10,7 @@ export default function Login() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Superadmin: passcode 12321, Society Admin: passcode breeza
+  // Superadmin: passcode 12321
   const handleLogin = (vals) => {
     setLoading(true);
     const pass = vals.passcode?.trim();
@@ -18,10 +18,6 @@ export default function Login() {
       dispatch(login({ role: "superadmin" }));
       message.success("Welcome Super Admin! You have full access.");
       navigate("/");
-    } else if (pass === "breeza") {
-      dispatch(login({ role: "societyadmin" }));
-      message.success("Welcome Breeza Society Admin!");
-      navigate("/society");
     } else {
       message.error("Invalid passcode");
     }
@@ -49,10 +45,10 @@ export default function Login() {
               {
                 validator: (_, value) => {
                   if (!value) return Promise.reject("Enter passcode");
-                  if (/^\d{4,6}$/.test(value) || value === "breeza") {
+                  if (/^\d{4,6}$/.test(value)) {
                     return Promise.resolve();
                   }
-                  return Promise.reject("Passcode must be 4–6 ");
+                  return Promise.reject("Passcode must be 4–6 digits");
                 },
               },
             ]}

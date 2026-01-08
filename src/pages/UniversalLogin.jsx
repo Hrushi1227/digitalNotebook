@@ -3,7 +3,6 @@ import { useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { login } from "../store/authSlice";
-import { selectMembers } from "../store/membersSlice";
 import { selectWorkers } from "../store/workersSlice";
 
 export default function UniversalLogin() {
@@ -11,7 +10,6 @@ export default function UniversalLogin() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const workers = useSelector(selectWorkers);
-  const members = useSelector(selectMembers);
 
   const handleLogin = (vals) => {
     const phone = vals.phone?.trim();
@@ -34,15 +32,6 @@ export default function UniversalLogin() {
       dispatch(login({ role: "worker", workerId: phone }));
       message.success("Welcome, Worker!");
       navigate("/worker-portal");
-      setLoading(false);
-      return;
-    }
-    // Check members
-    const member = members.find((m) => m.phone === phone);
-    if (member) {
-      dispatch(login({ role: "member", workerId: phone }));
-      message.success("Welcome, Society Member!");
-      navigate("/society");
       setLoading(false);
       return;
     }

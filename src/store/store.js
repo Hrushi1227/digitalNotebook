@@ -3,10 +3,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import authReducer from "./authSlice";
 import documentsReducer from "./documentsSlice";
 import materialsReducer from "./materialsSlice";
-import membersReducer from "./membersSlice";
 import messagesReducer from "./messagesSlice";
-import noticesReducer from "./noticesSlice";
-import parkingReducer from "./parkingSlice";
 import paymentsReducer from "./paymentsSlice";
 import workersReducer from "./workersSlice";
 
@@ -16,13 +13,10 @@ const store = configureStore({
   reducer: {
     auth: authReducer,
     workers: workersReducer,
-    members: membersReducer,
     materials: materialsReducer,
     payments: paymentsReducer,
     documents: documentsReducer,
     messages: messagesReducer,
-    parking: parkingReducer,
-    notices: noticesReducer,
   },
 });
 
@@ -30,14 +24,11 @@ const store = configureStore({
 
 const collections = [
   "workers",
-  "members",
   "tasks",
   "materials",
   "payments",
   "documents",
   "messages",
-  "parking",
-  "notices",
 ];
 
 // Realtime listeners for all collections

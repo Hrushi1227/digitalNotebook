@@ -4,7 +4,7 @@ const authSlice = createSlice({
   name: "auth",
   initialState: {
     isAuthenticated: false,
-    userRole: null, // "superadmin", "societyadmin", "admin", "worker", "member"
+    userRole: null, // "superadmin", "admin", "worker"
     loginTime: null,
     workerId: null, // Store worker ID for worker portal
   },
@@ -41,11 +41,9 @@ export const selectIsAuthenticated = (state) =>
   state.auth?.isAuthenticated || false;
 export const selectUserRole = (state) => state.auth?.userRole;
 export const selectIsAdmin = (state) =>
-  ["admin", "superadmin", "societyadmin"].includes(state.auth?.userRole);
+  ["admin", "superadmin"].includes(state.auth?.userRole);
 export const selectIsSuperAdmin = (state) =>
   state.auth?.userRole === "superadmin";
-export const selectIsSocietyAdmin = (state) =>
-  state.auth?.userRole === "societyadmin";
 export const selectWorkerId = (state) => state.auth?.workerId;
 export const selectIsWorker = (state) => state.auth?.userRole === "worker";
 export default authSlice.reducer;
