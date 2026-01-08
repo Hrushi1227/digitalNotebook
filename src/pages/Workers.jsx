@@ -1,6 +1,23 @@
-import { DownloadOutlined } from "@ant-design/icons";
-import { Button, Form, Input, InputNumber, Modal, Table } from "antd";
-import { useEffect, useState } from "react";
+import {
+  DownloadOutlined,
+  PhoneOutlined,
+  TeamOutlined,
+} from "@ant-design/icons";
+import {
+  Button,
+  Card,
+  Col,
+  Form,
+  Input,
+  InputNumber,
+  Modal,
+  Row,
+  Select,
+  Statistic,
+  Table,
+  Tag,
+} from "antd";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import { Link } from "react-router-dom";
@@ -21,6 +38,20 @@ export default function Workers() {
   const payments = useSelector(selectPayments);
   const dispatch = useDispatch();
   const isAdmin = useSelector(selectIsAdmin);
+
+  // Calculate worker statistics
+  const workerStats = useMemo(() => {
+    const totalLabor = payments.reduce(
+      (sum, p) => sum + Number(p.amount || 0),
+      0
+    );
+    const activeWorkers = workers.filter((w) =>
+      payments.some((p) => p.workerId === w.id)
+    ).length;
+    const totalWorkers = workers.length;
+
+    return { totalLabor, activeWorkers, totalWorkers };
+  }, [workers, payments]);
 
   const exportToCSV = () => {
     const csvData = workers.map((w) => {
@@ -92,21 +123,71 @@ export default function Workers() {
 
   const columns = [
     {
-      title: "Name",
+      title: "Worker Name",
       dataIndex: "name",
+      width: 180,
       render: (text, r) => (
-        <Link className="text-blue-600" to={`/workers/${r.id}`}>
+        <Link
+          className="text-blue-600 font-medium hover:text-blue-800"
+          to={`/workers/${r.id}`}
+        >
           {text}
         </Link>
       ),
     },
     {
-      title: "Phone",
+      title: "Contact",
       dataIndex: "phone",
-      render: (phone) => (phone ? `+91${phone}` : "-"),
+      width: 140,
+      render: (phone) =>
+        phone ? (
+          <span className="text-gray-700">
+            <PhoneOutlined className="mr-1" />
+            +91{phone}
+          </span>
+        ) : (
+          "-"
+        ),
     },
-    { title: "Profession", dataIndex: "profession" },
-    { title: "Rates", dataIndex: "rate" },
+    {
+      title: "Profession",
+      dataIndex: "profession",
+      width: 150,
+      render: (prof) =>
+        prof ? <Tag color="blue">{prof}</Tag> : <Tag>Not specified</Tag>,
+    },
+    {
+      title: "Daily Rate",
+      dataIndex: "rate",
+      width: 120,
+      render: (rate) => (
+        <span className="font-semibold text-green-600">
+          ₹{rate?.toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      title: "Total Paid",
+      key: "totalPaid",
+      width: 130,
+      render: (_, r) => {
+        const workerPayments = payments.filter((p) => p.workerId === r.id);
+        const total = workerPayments.reduce(
+          (sum, p) => sum + Number(p.amount || 0),
+          0
+        );
+        return <span className="font-bold">₹{total.toLocaleString()}</span>;
+      },
+    },
+    {
+      title: "Payments",
+      key: "paymentCount",
+      width: 100,
+      render: (_, r) => {
+        const count = payments.filter((p) => p.workerId === r.id).length;
+        return <Tag color={count > 0 ? "green" : "default"}>{count}</Tag>;
+      },
+    },
 
     ...(isAdmin
       ? [
@@ -134,57 +215,104 @@ export default function Workers() {
   ];
 
   return (
-    <div className="p-0 sm:p-2">
-      {/* Header */}
-      <div className="flex justify-between mb-3 sm:mb-4 px-2 sm:px-0">
-        <h1 className="text-lg sm:text-xl font-semibold">Workers</h1>
+    <div className="p-0 sm:p-2 md:p-4">
+      <h1 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 px-2 sm:px-0">
+        Workers & Labor Management
+      </h1>
 
-        <div className="flex gap-2">
-          <Button
-            icon={<DownloadOutlined />}
-            size="small"
-            onClick={exportToCSV}
-            disabled={workers.length === 0}
-          >
-            <span className="hidden sm:inline">Export</span>
-          </Button>
-          {isAdmin && (
+      {/* Statistics Cards */}
+      <div className="px-2 sm:px-0 mb-4">
+        <Row gutter={[8, 8]}>
+          <Col xs={24} sm={8}>
+            <Card>
+              <Statistic
+                title="Total Workers"
+                value={workerStats.totalWorkers}
+                prefix={<TeamOutlined />}
+                valueStyle={{ color: "#1890ff", fontSize: "28px" }}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={8}>
+            <Card>
+              <Statistic
+                title="Active Workers"
+                value={workerStats.activeWorkers}
+                valueStyle={{ color: "#52c41a", fontSize: "28px" }}
+                suffix={`/ ${workerStats.totalWorkers}`}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={8}>
+            <Card>
+              <Statistic
+                title="Total Labor Cost"
+                value={workerStats.totalLabor}
+                prefix="₹"
+                valueStyle={{ color: "#cf1322", fontSize: "24px" }}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="px-2 sm:px-0 mb-4">
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-gray-500">
+            Click on worker name to view details and payment history
+          </div>
+          <div className="flex gap-2">
             <Button
-              type="primary"
-              size="small"
-              onClick={() => {
-                setEdit(null);
-                setOpen(true);
-              }}
+              icon={<DownloadOutlined />}
+              onClick={exportToCSV}
+              disabled={workers.length === 0}
+              size="large"
             >
-              <span className="hidden sm:inline">Add Worker</span>
-              <span className="sm:hidden">Add</span>
+              <span className="hidden sm:inline">Export</span>
             </Button>
-          )}
+            {isAdmin && (
+              <Button
+                type="primary"
+                size="large"
+                onClick={() => {
+                  setEdit(null);
+                  setOpen(true);
+                }}
+              >
+                + Add Worker
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Table */}
-      <div className="overflow-x-auto px-2 sm:px-0">
-        <Table
-          rowKey="id"
-          dataSource={workers}
-          columns={columns}
-          className="bg-white p-2 rounded-lg shadow"
-          scroll={{ x: "max-content" }}
-        />
+      {/* Workers Table */}
+      <div className="px-2 sm:px-0">
+        <Card>
+          <div className="overflow-x-auto -mx-6 sm:mx-0">
+            <Table
+              rowKey="id"
+              dataSource={workers}
+              columns={columns}
+              scroll={{ x: "max-content" }}
+              pagination={{ pageSize: 10 }}
+            />
+          </div>
+        </Card>
       </div>
 
       {/* Add / Edit Modal */}
       <Modal
         open={open}
-        title={edit ? "Edit Worker" : "Add Worker"}
+        title={edit ? "Edit Worker Details" : "Add New Worker"}
         onCancel={() => {
           setOpen(false);
           setEdit(null);
           form.resetFields();
         }}
         onOk={() => document.getElementById("workerSubmitBtn").click()}
+        width={600}
       >
         <Form
           form={form}
@@ -208,13 +336,17 @@ export default function Workers() {
             form.resetFields();
           }}
         >
-          <Form.Item name="name" label="Name" rules={[{ required: true }]}>
-            <Input placeholder="Worker Name" />
+          <Form.Item
+            name="name"
+            label="Worker Name"
+            rules={[{ required: true, message: "Please enter worker name" }]}
+          >
+            <Input placeholder="e.g., Rajesh Kumar" size="large" />
           </Form.Item>
 
           <Form.Item
             name="phone"
-            label="Phone"
+            label="Mobile Number"
             rules={[
               { required: true, message: "Please enter phone number" },
               { pattern: /^\d{10}$/, message: "Enter valid 10-digit number" },
@@ -225,16 +357,61 @@ export default function Workers() {
               prefix="+91"
               maxLength={10}
               inputMode="numeric"
+              size="large"
             />
           </Form.Item>
 
-          <Form.Item name="profession" label="Profession">
-            <Input placeholder="Electrician, POP, Carpenter etc." />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="profession"
+                label="Profession/Trade"
+                rules={[
+                  { required: true, message: "Please select profession" },
+                ]}
+              >
+                <Select
+                  placeholder="Select profession"
+                  size="large"
+                  showSearch
+                  options={[
+                    { value: "Electrician" },
+                    { value: "Plumber" },
+                    { value: "Carpenter" },
+                    { value: "Painter" },
+                    { value: "Mason" },
+                    { value: "POP Worker" },
+                    { value: "Tile Worker" },
+                    { value: "Welder" },
+                    { value: "Helper" },
+                    { value: "Supervisor" },
+                    { value: "Other" },
+                  ]}
+                  allowClear
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="rate"
+                label="Daily Rate (₹)"
+                rules={[{ required: true, message: "Please enter daily rate" }]}
+              >
+                <InputNumber
+                  className="w-full"
+                  min={0}
+                  placeholder="500"
+                  size="large"
+                  prefix="₹"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item name="rate" label="Rates" rules={[{ required: true }]}>
-            <InputNumber className="w-full" min={0} />
-          </Form.Item>
+          <div className="text-xs text-gray-500 mt-2">
+            💡 Tip: Worker can login using their mobile number to view work
+            details
+          </div>
 
           <button id="workerSubmitBtn" type="submit" className="hidden" />
         </Form>

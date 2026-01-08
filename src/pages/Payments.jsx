@@ -1,12 +1,25 @@
-import { DownloadOutlined } from "@ant-design/icons";
+import {
+  CalendarOutlined,
+  DownloadOutlined,
+  UserOutlined,
+  WalletOutlined,
+} from "@ant-design/icons";
 import {
   Button,
+  Card,
+  Col,
   DatePicker,
   Form,
+  Input,
   InputNumber,
   Modal,
+  Row,
   Select,
+  Space,
+  Statistic,
   Table,
+  Tag,
+  Tooltip,
 } from "antd";
 import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -25,6 +38,58 @@ import { addItem, deleteItem } from "../firebaseService";
 
 export default function Payments() {
   const payments = useSelector(selectPayments);
+  const workers = useSelector(selectWorkers);
+  const dispatch = useDispatch();
+
+  const [open, setOpen] = useState(false);
+  const [form] = Form.useForm();
+
+  const paymentsUnique = useMemo(() => {
+    // keep last occurrence for each id
+    return Array.from(new Map(payments.map((p) => [p.id, p])).values());
+  }, [payments]);
+
+  const totalSpent = useMemo(() => {
+    return paymentsUnique.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+  }, [paymentsUnique]);
+
+  // Calculate payment statistics
+  const paymentStats = useMemo(() => {
+    const thisMonth = new Date().getMonth();
+    const thisYear = new Date().getFullYear();
+
+    const thisMonthPayments = paymentsUnique.filter((p) => {
+      const paymentDate = new Date(p.date);
+      return (
+        paymentDate.getMonth() === thisMonth &&
+        paymentDate.getFullYear() === thisYear
+      );
+    });
+
+    const thisMonthTotal = thisMonthPayments.reduce(
+      (sum, p) => sum + (Number(p.amount) || 0),
+      0
+    );
+    const avgPayment =
+      paymentsUnique.length > 0
+        ? Math.round(totalSpent / paymentsUnique.length)
+        : 0;
+
+    // Get last payment date
+    const sortedPayments = [...paymentsUnique].sort(
+      (a, b) => new Date(b.date) - new Date(a.date)
+    );
+    const lastPaymentDate =
+      sortedPayments.length > 0 ? sortedPayments[0].date : null;
+
+    return {
+      thisMonthTotal,
+      thisMonthCount: thisMonthPayments.length,
+      avgPayment,
+      lastPaymentDate,
+      totalPayments: paymentsUnique.length,
+    };
+  }, [paymentsUnique, totalSpent]);
 
   const exportToCSV = () => {
     const csvData = paymentsUnique.map((p) => ({
@@ -55,28 +120,58 @@ export default function Payments() {
     link.download = `payments_${new Date().toISOString().split("T")[0]}.csv`;
     link.click();
   };
-  const paymentsUnique = useMemo(() => {
-    // keep last occurrence for each id
-    return Array.from(new Map(payments.map((p) => [p.id, p])).values());
-  }, [payments]);
-  const totalSpent = useMemo(() => {
-    return paymentsUnique.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-  }, [paymentsUnique]);
-
-  const workers = useSelector(selectWorkers);
-  const dispatch = useDispatch();
-
-  const [open, setOpen] = useState(false);
 
   const columns = [
     {
-      title: "Worker",
-      dataIndex: "workerId",
-      render: (id) => workers.find((w) => w.id === id)?.name || "-",
+      title: "Payment Date",
+      dataIndex: "date",
+      width: 120,
+      sorter: (a, b) => new Date(a.date) - new Date(b.date),
+      defaultSortOrder: "descend",
+      render: (date) => (
+        <span>
+          <CalendarOutlined className="mr-2 text-gray-400" />
+          {date}
+        </span>
+      ),
     },
-    { title: "Amount", dataIndex: "amount", render: (v) => `₹${v}` },
-    { title: "Date", dataIndex: "date" },
-    { title: "Note", dataIndex: "note" },
+    {
+      title: "Worker Name",
+      dataIndex: "workerId",
+      width: 180,
+      render: (id) => {
+        const worker = workers.find((w) => w.id === id);
+        return worker ? (
+          <Tag color="blue" className="text-sm">
+            <UserOutlined className="mr-1" />
+            {worker.name}
+          </Tag>
+        ) : (
+          <span className="text-gray-400">Unknown</span>
+        );
+      },
+    },
+    {
+      title: "Amount Paid",
+      dataIndex: "amount",
+      width: 150,
+      sorter: (a, b) => a.amount - b.amount,
+      render: (v) => (
+        <span className="text-lg font-bold text-green-600">
+          ₹{v?.toLocaleString()}
+        </span>
+      ),
+    },
+    {
+      title: "Note/Description",
+      dataIndex: "note",
+      ellipsis: true,
+      render: (note) => (
+        <Tooltip title={note}>
+          <span className="text-gray-600">{note || "-"}</span>
+        </Tooltip>
+      ),
+    },
     {
       title: "Action",
       render: (_, r) => (
@@ -101,51 +196,130 @@ export default function Payments() {
   ];
 
   return (
-    <div className="p-0 sm:p-2">
-      <div className="flex flex-col sm:flex-row justify-between mb-3 sm:mb-4 gap-2 sm:gap-0 px-2 sm:px-0">
-        <div className="flex justify-end sm:justify-start order-2 sm:order-1">
-          <div className="bg-white px-3 sm:px-6 py-2 sm:py-3 rounded-lg shadow text-sm sm:text-lg font-semibold">
-            Total: <span className="text-green-600">₹{totalSpent}</span>
+    <div className="p-0 sm:p-2 md:p-4">
+      <h1 className="text-xl sm:text-2xl font-semibold mb-4 sm:mb-6 px-2 sm:px-0">
+        💰 Payment Records & Transactions
+      </h1>
+
+      {/* Statistics Dashboard */}
+      <div className="px-2 sm:px-0 mb-4">
+        <Row gutter={[8, 8]}>
+          <Col xs={24} sm={12} md={6}>
+            <Card>
+              <Statistic
+                title="Total Paid (All Time)"
+                value={totalSpent}
+                prefix="₹"
+                valueStyle={{ color: "#cf1322", fontSize: "24px" }}
+                suffix={
+                  <span className="text-xs text-gray-400">
+                    ({paymentStats.totalPayments} payments)
+                  </span>
+                }
+              />
+            </Card>
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Card>
+              <Statistic
+                title="This Month"
+                value={paymentStats.thisMonthTotal}
+                prefix="₹"
+                valueStyle={{ color: "#1890ff", fontSize: "24px" }}
+                suffix={
+                  <span className="text-xs text-gray-400">
+                    ({paymentStats.thisMonthCount} payments)
+                  </span>
+                }
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={12} md={6}>
+            <Card>
+              <Statistic
+                title="Average Payment"
+                value={paymentStats.avgPayment}
+                prefix="₹"
+                valueStyle={{ fontSize: "24px", color: "#52c41a" }}
+              />
+            </Card>
+          </Col>
+          <Col xs={12} sm={12} md={6}>
+            <Card>
+              <Statistic
+                title="Last Payment"
+                value={paymentStats.lastPaymentDate || "N/A"}
+                valueStyle={{ fontSize: "18px", color: "#666" }}
+                prefix={<CalendarOutlined />}
+              />
+            </Card>
+          </Col>
+        </Row>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="px-2 sm:px-0 mb-4">
+        <div className="flex justify-between items-center">
+          <div className="text-sm text-gray-500">
+            💡 Track all labor payments with dates and notes for easy accounting
           </div>
-        </div>
-        <h1 className="text-lg sm:text-xl font-semibold order-1 sm:order-2">
-          Payments
-        </h1>
-
-        <div className="flex gap-2 order-3">
-          <Button
-            icon={<DownloadOutlined />}
-            size="small"
-            onClick={exportToCSV}
-            disabled={paymentsUnique.length === 0}
-          >
-            <span className="hidden sm:inline">Export</span>
-          </Button>
-          <Button type="primary" size="small" onClick={() => setOpen(true)}>
-            <span className="hidden sm:inline">Add Payment</span>
-            <span className="sm:hidden">Add</span>
-          </Button>
+          <Space>
+            <Button
+              icon={<DownloadOutlined />}
+              onClick={exportToCSV}
+              disabled={paymentsUnique.length === 0}
+              size="large"
+            >
+              <span className="hidden sm:inline">Export</span>
+            </Button>
+            <Button
+              type="primary"
+              size="large"
+              icon={<WalletOutlined />}
+              onClick={() => {
+                form.resetFields();
+                setOpen(true);
+              }}
+            >
+              Record Payment
+            </Button>
+          </Space>
         </div>
       </div>
 
-      <div className="overflow-x-auto px-2 sm:px-0">
-        <Table
-          rowKey="id"
-          dataSource={paymentsUnique}
-          columns={columns}
-          className="bg-white p-2 rounded-lg shadow"
-          scroll={{ x: "max-content" }}
-        />
+      {/* Payments Table */}
+      <div className="px-2 sm:px-0">
+        <Card title={`Payment History (${paymentsUnique.length} records)`}>
+          <div className="overflow-x-auto -mx-6 sm:mx-0">
+            <Table
+              rowKey="id"
+              dataSource={paymentsUnique}
+              columns={columns}
+              scroll={{ x: "max-content" }}
+              pagination={{
+                pageSize: 15,
+                showTotal: (total) => `Total ${total} payments`,
+              }}
+            />
+          </div>
+        </Card>
       </div>
 
+      {/* Add Payment Modal */}
       <Modal
         open={open}
-        title="Add Payment"
-        onCancel={() => setOpen(false)}
+        title="💰 Record New Payment"
+        onCancel={() => {
+          setOpen(false);
+          form.resetFields();
+        }}
         onOk={() => document.getElementById("paySubmitBtn").click()}
+        width={600}
       >
         <Form
+          form={form}
           layout="vertical"
+          initialValues={{ date: dayjs() }}
           onFinish={async (vals) => {
             const payload = {
               workerId: vals.workerId,
@@ -158,35 +332,85 @@ export default function Payments() {
             dispatch(addPayment({ id: res.id, ...payload }));
 
             setOpen(false);
+            form.resetFields();
           }}
         >
           <Form.Item
             name="workerId"
-            label="Worker"
-            rules={[{ required: true }]}
+            label="Select Worker"
+            rules={[{ required: true, message: "Please select a worker" }]}
           >
             <Select
+              placeholder="Choose worker to pay"
+              size="large"
+              showSearch
+              filterOption={(input, option) =>
+                option.label.toLowerCase().includes(input.toLowerCase())
+              }
               options={workers.map((w) => ({
-                label: w.name,
+                label: `${w.name} - ${w.profession || "Worker"} (₹${
+                  w.rate
+                }/day)`,
                 value: w.id,
               }))}
             />
           </Form.Item>
 
-          <Form.Item name="amount" label="Amount" rules={[{ required: true }]}>
-            <InputNumber className="w-full" min={0} />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                name="amount"
+                label="Payment Amount (₹)"
+                rules={[
+                  { required: true, message: "Please enter amount" },
+                  {
+                    type: "number",
+                    min: 1,
+                    message: "Amount must be greater than 0",
+                  },
+                ]}
+              >
+                <InputNumber
+                  className="w-full"
+                  min={0}
+                  placeholder="Enter amount"
+                  size="large"
+                  prefix="₹"
+                  formatter={(value) =>
+                    `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+                  }
+                  parser={(value) => value.replace(/₹\s?|(,*)/g, "")}
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item
+                name="date"
+                label="Payment Date"
+                rules={[{ required: true, message: "Please select date" }]}
+              >
+                <DatePicker
+                  className="w-full"
+                  size="large"
+                  format="YYYY-MM-DD"
+                />
+              </Form.Item>
+            </Col>
+          </Row>
 
-          <Form.Item name="note" label="Note">
-            <input
-              className="border rounded p-2 w-full"
-              placeholder="Optional note"
+          <Form.Item name="note" label="Note/Description (Optional)">
+            <Input.TextArea
+              rows={3}
+              placeholder="e.g., Week salary, Advance payment, Bonus, etc."
+              maxLength={200}
+              showCount
             />
           </Form.Item>
 
-          <Form.Item name="date" label="Date" rules={[{ required: true }]}>
-            <DatePicker className="w-full" defaultValue={dayjs()} />
-          </Form.Item>
+          <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-700">
+            <strong>💡 Reminder:</strong> Always record payments immediately to
+            maintain accurate financial records. Add notes for future reference.
+          </div>
 
           <button id="paySubmitBtn" type="submit" className="hidden" />
         </Form>
