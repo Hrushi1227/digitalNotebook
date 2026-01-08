@@ -6,6 +6,7 @@ import {
 } from "@ant-design/icons";
 import { Card, Col, Empty, Row, Statistic, Table } from "antd";
 import { useSelector } from "react-redux";
+import { Link } from "react-router-dom";
 
 import { selectDocuments } from "../store/documentsSlice";
 import { selectMaterials } from "../store/materialsSlice";
@@ -73,7 +74,18 @@ export default function Dashboard() {
   ];
 
   const workerColumns = [
-    { title: "Worker", dataIndex: "name" },
+    {
+      title: "Worker",
+      dataIndex: "name",
+      render: (name, record) => (
+        <Link
+          to={`/workers/${record.workerId}`}
+          className="text-blue-600 hover:text-blue-800 hover:underline"
+        >
+          {name}
+        </Link>
+      ),
+    },
     {
       title: "Paid Amount",
       dataIndex: "amount",

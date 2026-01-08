@@ -1,3 +1,4 @@
+import { PrinterOutlined } from "@ant-design/icons";
 import {
   Button,
   Card,
@@ -8,14 +9,12 @@ import {
   Modal,
   Space,
   Table,
-  Tag,
 } from "antd";
 import { useMemo, useState } from "react";
 import { useSelector } from "react-redux";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { selectPayments } from "../store/paymentsSlice";
-import { selectTasks } from "../store/tasksSlice";
 import { selectWorkers } from "../store/workersSlice";
 
 import ProtectedAction from "../components/common/ProtectedAction";
@@ -26,7 +25,6 @@ export default function WorkerDetails() {
   const navigate = useNavigate();
 
   const workers = useSelector(selectWorkers);
-  const tasks = useSelector(selectTasks);
   const payments = useSelector(selectPayments);
 
   const worker = workers.find((w) => w.id === id);
@@ -44,12 +42,6 @@ export default function WorkerDetails() {
     );
   }
 
-  // Tasks assigned to worker
-  const workerTasks = useMemo(
-    () => tasks.filter((t) => t.workerId === id),
-    [tasks, id]
-  );
-
   // Payments to worker
   const workerPayments = useMemo(
     () => payments.filter((p) => p.workerId === id),
@@ -61,31 +53,139 @@ export default function WorkerDetails() {
     0
   );
 
-  const taskColumns = [
-    { title: "Task", dataIndex: "title" },
-    {
-      title: "Status",
-      dataIndex: "status",
-      render: (s) =>
-        s === "pending" ? (
-          <Tag color="orange">Pending</Tag>
-        ) : (
-          <Tag color="green">Completed</Tag>
-        ),
-    },
-    { title: "Deadline", dataIndex: "deadline" },
-  ];
-
   const payColumns = [
     { title: "Amount", dataIndex: "amount", render: (v) => `₹${v}` },
     { title: "Date", dataIndex: "date" },
     { title: "Note", dataIndex: "note" },
   ];
 
+  const handlePrintBill = () => {
+    const printWindow = window.open("", "", "width=800,height=600");
+    const currentDate = new Date().toLocaleDateString();
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Payment Bill - ${worker.name}</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              padding: 40px;
+              max-width: 800px;
+              margin: 0 auto;
+            }
+            h1 {
+              color: #1890ff;
+              border-bottom: 2px solid #1890ff;
+              padding-bottom: 10px;
+            }
+            .header-info {
+              margin: 20px 0;
+              background: #f5f5f5;
+              padding: 15px;
+              border-radius: 5px;
+            }
+            .header-info p { margin: 5px 0; }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 20px;
+            }
+            th, td {
+              border: 1px solid #ddd;
+              padding: 12px;
+              text-align: left;
+            }
+            th {
+              background-color: #1890ff;
+              color: white;
+            }
+            tr:nth-child(even) { background-color: #f9f9f9; }
+            .total-row {
+              font-weight: bold;
+              background-color: #e6f7ff !important;
+              font-size: 16px;
+            }
+            .footer {
+              margin-top: 40px;
+              text-align: center;
+              color: #888;
+              font-size: 12px;
+            }
+            @media print {
+              body { padding: 20px; }
+            }
+          </style>
+        </head>
+        <body>
+          <h1>Payment Bill</h1>
+          <div class="header-info">
+            <p><strong>Worker Name:</strong> ${worker.name}</p>
+            <p><strong>Phone:</strong> ${worker.phone}</p>
+            <p><strong>Profession:</strong> ${worker.profession}</p>
+            <p><strong>Daily Rate:</strong> ₹${worker.rate}</p>
+            <p><strong>Bill Date:</strong> ${currentDate}</p>
+          </div>
+
+          <h2>Payment History</h2>
+          <table>
+            <thead>
+              <tr>
+                <th>Sr. No.</th>
+                <th>Date</th>
+                <th>Amount (₹)</th>
+                <th>Note</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${workerPayments
+                .map(
+                  (p, idx) => `
+                <tr>
+                  <td>${idx + 1}</td>
+                  <td>${p.date || "N/A"}</td>
+                  <td>₹${p.amount}</td>
+                  <td>${p.note || "-"}</td>
+                </tr>
+              `
+                )
+                .join("")}
+              <tr class="total-row">
+                <td colspan="2">Total Paid</td>
+                <td colspan="2">₹${totalPaid}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="footer">
+            <p>Generated on ${currentDate}</p>
+            <p>Breeza - Home Renovation Tracker</p>
+          </div>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
+  };
+
   return (
     <div className="p-4">
       <Space className="mb-4">
         <Button onClick={() => navigate("/workers")}>Back</Button>
+
+        <Button
+          type="default"
+          icon={<PrinterOutlined />}
+          onClick={handlePrintBill}
+        >
+          Print Bill
+        </Button>
 
         <ProtectedAction onAuthorized={() => setOpen(true)}>
           <Button type="primary">Edit Worker</Button>
@@ -122,19 +222,6 @@ export default function WorkerDetails() {
             <b>₹{totalPaid}</b>
           </Descriptions.Item>
         </Descriptions>
-      </Card>
-
-      {/* Tasks */}
-      <Card className="mb-6 shadow" title="Assigned Tasks">
-        <div style={{ overflowX: "auto" }}>
-          <Table
-            rowKey="id"
-            dataSource={workerTasks}
-            columns={taskColumns}
-            pagination={false}
-            scroll={{ x: "max-content" }}
-          />
-        </div>
       </Card>
 
       {/* Payments */}
