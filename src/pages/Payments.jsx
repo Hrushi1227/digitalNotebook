@@ -1,3 +1,4 @@
+import { DownloadOutlined } from "@ant-design/icons";
 import {
   Button,
   DatePicker,
@@ -24,6 +25,36 @@ import { addItem, deleteItem } from "../firebaseService";
 
 export default function Payments() {
   const payments = useSelector(selectPayments);
+
+  const exportToCSV = () => {
+    const csvData = paymentsUnique.map((p) => ({
+      Worker: workers.find((w) => w.id === p.workerId)?.name || "-",
+      Amount: p.amount,
+      Date: p.date,
+      Note: p.note || "-",
+    }));
+
+    const headers = ["Worker", "Amount", "Date", "Note"];
+    const csvContent = [
+      headers.join(","),
+      ...csvData.map((row) =>
+        headers
+          .map((header) => {
+            const value = row[header];
+            return typeof value === "string" && value.includes(",")
+              ? `"${value}"`
+              : value;
+          })
+          .join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `payments_${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+  };
   const paymentsUnique = useMemo(() => {
     // keep last occurrence for each id
     return Array.from(new Map(payments.map((p) => [p.id, p])).values());
@@ -81,15 +112,20 @@ export default function Payments() {
           Payments
         </h1>
 
-        <Button
-          type="primary"
-          size="small"
-          onClick={() => setOpen(true)}
-          className="order-3"
-        >
-          <span className="hidden sm:inline">Add Payment</span>
-          <span className="sm:hidden">Add</span>
-        </Button>
+        <div className="flex gap-2 order-3">
+          <Button
+            icon={<DownloadOutlined />}
+            size="small"
+            onClick={exportToCSV}
+            disabled={paymentsUnique.length === 0}
+          >
+            <span className="hidden sm:inline">Export</span>
+          </Button>
+          <Button type="primary" size="small" onClick={() => setOpen(true)}>
+            <span className="hidden sm:inline">Add Payment</span>
+            <span className="sm:hidden">Add</span>
+          </Button>
+        </div>
       </div>
 
       <div className="overflow-x-auto px-2 sm:px-0">

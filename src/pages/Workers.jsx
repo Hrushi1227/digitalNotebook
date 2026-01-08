@@ -1,3 +1,4 @@
+import { DownloadOutlined } from "@ant-design/icons";
 import { Button, Form, Input, InputNumber, Modal, Table } from "antd";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
@@ -7,6 +8,7 @@ import { Link } from "react-router-dom";
 import AdminOnly from "../components/common/AdminOnly";
 import { addItem, deleteItem, updateItem } from "../firebaseService";
 import { selectIsAdmin } from "../store/authSlice";
+import { selectPayments } from "../store/paymentsSlice";
 import {
   addWorker,
   deleteWorker,
@@ -16,8 +18,55 @@ import {
 
 export default function Workers() {
   const workers = useSelector(selectWorkers);
+  const payments = useSelector(selectPayments);
   const dispatch = useDispatch();
   const isAdmin = useSelector(selectIsAdmin);
+
+  const exportToCSV = () => {
+    const csvData = workers.map((w) => {
+      const workerPayments = payments.filter((p) => p.workerId === w.id);
+      const totalPaid = workerPayments.reduce(
+        (sum, p) => sum + Number(p.amount || 0),
+        0
+      );
+      return {
+        Name: w.name,
+        Phone: `+91${w.phone}`,
+        Profession: w.profession || "-",
+        DailyRate: w.rate,
+        TotalPaid: totalPaid,
+        PaymentCount: workerPayments.length,
+      };
+    });
+
+    const headers = [
+      "Name",
+      "Phone",
+      "Profession",
+      "DailyRate",
+      "TotalPaid",
+      "PaymentCount",
+    ];
+    const csvContent = [
+      headers.join(","),
+      ...csvData.map((row) =>
+        headers
+          .map((header) => {
+            const value = row[header];
+            return typeof value === "string" && value.includes(",")
+              ? `"${value}"`
+              : value;
+          })
+          .join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `workers_${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+  };
 
   const [open, setOpen] = useState(false);
   const [edit, setEdit] = useState(null);
@@ -90,19 +139,29 @@ export default function Workers() {
       <div className="flex justify-between mb-3 sm:mb-4 px-2 sm:px-0">
         <h1 className="text-lg sm:text-xl font-semibold">Workers</h1>
 
-        {isAdmin && (
+        <div className="flex gap-2">
           <Button
-            type="primary"
+            icon={<DownloadOutlined />}
             size="small"
-            onClick={() => {
-              setEdit(null);
-              setOpen(true);
-            }}
+            onClick={exportToCSV}
+            disabled={workers.length === 0}
           >
-            <span className="hidden sm:inline">Add Worker</span>
-            <span className="sm:hidden">Add</span>
+            <span className="hidden sm:inline">Export</span>
           </Button>
-        )}
+          {isAdmin && (
+            <Button
+              type="primary"
+              size="small"
+              onClick={() => {
+                setEdit(null);
+                setOpen(true);
+              }}
+            >
+              <span className="hidden sm:inline">Add Worker</span>
+              <span className="sm:hidden">Add</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Table */}

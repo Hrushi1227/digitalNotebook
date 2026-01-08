@@ -1,3 +1,4 @@
+import { DownloadOutlined } from "@ant-design/icons";
 import {
   AutoComplete,
   Button,
@@ -77,6 +78,38 @@ export default function Materials() {
 
   const total = materials.reduce((a, m) => a + Number(m.price || 0), 0);
 
+  const exportToCSV = () => {
+    const csvData = materials.map((m) => ({
+      Name: m.name,
+      Quantity: m.qty,
+      Price: m.price,
+      Vendor: m.vendor || "-",
+      Category: m.category || "-",
+      Date: m.date,
+    }));
+
+    const headers = ["Name", "Quantity", "Price", "Vendor", "Category", "Date"];
+    const csvContent = [
+      headers.join(","),
+      ...csvData.map((row) =>
+        headers
+          .map((header) => {
+            const value = row[header];
+            return typeof value === "string" && value.includes(",")
+              ? `"${value}"`
+              : value;
+          })
+          .join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `materials_${new Date().toISOString().split("T")[0]}.csv`;
+    link.click();
+  };
+
   return (
     <div className="p-0 sm:p-2">
       <div className="inline-flex items-center gap-2 sm:gap-3 bg-white border border-gray-200 px-3 sm:px-6 py-2 sm:py-2.5 rounded-lg shadow-sm mx-2 sm:mx-0 mb-3 sm:mb-0">
@@ -88,7 +121,16 @@ export default function Materials() {
         </span>
       </div>
 
-      <div className="bg-white rounded-xl p-2 sm:p-4 shadow mb-3 sm:mb-4 mx-2 sm:mx-0 mt-3 sm:mt-4">
+      <div className="bg-white rounded-xl p-2 sm:p-4 shadow mb-3 sm:mb-4 mx-2 sm:mx-0 mt-3 sm:mt-4 flex gap-2">
+        <Button
+          icon={<DownloadOutlined />}
+          size="small"
+          onClick={exportToCSV}
+          disabled={materials.length === 0}
+        >
+          <span className="hidden sm:inline">Export CSV</span>
+          <span className="sm:hidden">Export</span>
+        </Button>
         <Button
           type="primary"
           size="small"
@@ -107,7 +149,6 @@ export default function Materials() {
           rowKey="id"
           dataSource={materials}
           columns={columns}
-          scroll={{ x: "max-content" }}
           scroll={{ x: "max-content" }}
         />
       </div>
