@@ -724,17 +724,30 @@ export default function Documents() {
         title={previewDoc?.name}
         onCancel={handlePreviewClose}
         footer={null}
-        width={900}
-        bodyStyle={{ maxHeight: "80vh", overflowY: "auto" }}
+        width="100%"
+        style={{
+          top: 0,
+          paddingBottom: 0,
+          maxWidth: window.innerWidth > 768 ? "900px" : "100vw",
+        }}
+        bodyStyle={{
+          maxHeight: "80vh",
+          overflowY: "auto",
+          padding: window.innerWidth > 768 ? "24px" : "12px",
+        }}
+        centered={window.innerWidth > 768}
       >
         {previewDoc && (
-          <div className="bg-gray-100 p-4 rounded">
+          <div
+            className="bg-gray-100 rounded"
+            style={{ padding: window.innerWidth > 768 ? "16px" : "8px" }}
+          >
             {previewDoc.fileType === "Excel" ? (
               renderExcelPreview(previewDoc)
             ) : previewDoc.fileType === "Image" ? (
               <Carousel
                 infinite
-                arrows
+                arrows={window.innerWidth > 768}
                 dots
                 draggable
                 initialSlide={Math.max(
@@ -743,30 +756,88 @@ export default function Documents() {
                 )}
               >
                 {imageDocs.map((img) => (
-                  <div key={img.id} className="flex justify-center">
-                    <img
-                      src={img.dataUrl}
-                      alt={img.name}
-                      style={{
-                        maxHeight: "600px",
-                        objectFit: "contain",
-                        margin: "0 auto",
-                      }}
-                    />
+                  <div key={img.id}>
+                    <div className="flex justify-center">
+                      <img
+                        src={img.dataUrl}
+                        alt={img.name}
+                        style={{
+                          maxHeight: window.innerWidth > 768 ? "600px" : "70vh",
+                          maxWidth: "100%",
+                          width: "auto",
+                          height: "auto",
+                          objectFit: "contain",
+                          margin: "0 auto",
+                          display: "block",
+                          touchAction: "pinch-zoom",
+                          cursor:
+                            window.innerWidth <= 768 ? "pointer" : "default",
+                        }}
+                        onClick={(e) => {
+                          // Allow native image zoom on mobile
+                          if (window.innerWidth <= 768) {
+                            window.open(img.dataUrl, "_blank");
+                          }
+                        }}
+                      />
+                    </div>
+                    {window.innerWidth <= 768 && (
+                      <div
+                        style={{
+                          textAlign: "center",
+                          marginTop: "12px",
+                          padding: "8px",
+                          background: "#e6f7ff",
+                          borderRadius: "4px",
+                          fontSize: "12px",
+                          color: "#1890ff",
+                        }}
+                      >
+                        💡 Tap image to open in full screen for zoom
+                      </div>
+                    )}
                   </div>
                 ))}
               </Carousel>
             ) : previewDoc.fileType === "PDF" ? (
-              <iframe
-                src={previewDoc.dataUrl}
-                title={previewDoc.name}
-                style={{
-                  width: "100%",
-                  height: "600px",
-                  border: "none",
-                  borderRadius: "4px",
-                }}
-              />
+              <div style={{ position: "relative", width: "100%" }}>
+                <iframe
+                  src={previewDoc.dataUrl}
+                  title={previewDoc.name}
+                  style={{
+                    width: "100%",
+                    height: window.innerWidth > 768 ? "600px" : "70vh",
+                    border: "none",
+                    borderRadius: "4px",
+                  }}
+                />
+                {window.innerWidth <= 768 && (
+                  <>
+                    <div
+                      style={{
+                        textAlign: "center",
+                        marginTop: "12px",
+                        padding: "8px",
+                        background: "#fff7e6",
+                        borderRadius: "4px",
+                        fontSize: "12px",
+                        color: "#d46b08",
+                      }}
+                    >
+                      ⚠️ For better PDF viewing, download or open in full screen
+                    </div>
+                    <Button
+                      type="primary"
+                      icon={<DownloadOutlined />}
+                      onClick={() => handleDownload(previewDoc)}
+                      style={{ marginTop: "12px", width: "100%" }}
+                      size="large"
+                    >
+                      Open in Full Screen
+                    </Button>
+                  </>
+                )}
+              </div>
             ) : previewDoc.fileType === "Word" ? (
               <div className="bg-white p-4 rounded text-center">
                 <p className="text-gray-600 mb-4">

@@ -940,7 +940,14 @@ export default function WorkerPortal() {
           title={
             <Space>
               <FileTextOutlined style={{ color: "#1890ff" }} />
-              <span style={{ fontWeight: "600" }}>{previewDoc?.name}</span>
+              <span
+                style={{
+                  fontWeight: "600",
+                  fontSize: window.innerWidth > 768 ? "16px" : "14px",
+                }}
+              >
+                {previewDoc?.name}
+              </span>
             </Space>
           }
           footer={[
@@ -948,6 +955,7 @@ export default function WorkerPortal() {
               key="close"
               onClick={() => setPreviewOpen(false)}
               size="large"
+              style={{ width: window.innerWidth <= 768 ? "100%" : "auto" }}
             >
               Close
             </Button>,
@@ -968,40 +976,109 @@ export default function WorkerPortal() {
                 }
               }}
               size="large"
+              style={{
+                width: window.innerWidth <= 768 ? "100%" : "auto",
+                marginTop: window.innerWidth <= 768 ? "8px" : "0",
+              }}
             >
               Download
             </Button>,
           ]}
           onCancel={() => setPreviewOpen(false)}
-          width={900}
-          bodyStyle={{ maxHeight: "80vh", overflowY: "auto", padding: "24px" }}
+          width="100%"
+          style={{
+            top: window.innerWidth > 768 ? 20 : 0,
+            paddingBottom: 0,
+            maxWidth: window.innerWidth > 768 ? "900px" : "100vw",
+          }}
+          bodyStyle={{
+            maxHeight: window.innerWidth > 768 ? "80vh" : "75vh",
+            overflowY: "auto",
+            overflowX: "hidden",
+            padding: window.innerWidth > 768 ? "24px" : "12px",
+            WebkitOverflowScrolling: "touch",
+          }}
+          centered={window.innerWidth > 768}
         >
           {previewDoc && (
-            <div className="bg-gray-50 p-4 rounded-lg">
+            <div
+              className="bg-gray-50 rounded-lg"
+              style={{ padding: window.innerWidth > 768 ? "16px" : "8px" }}
+            >
               {previewDoc.fileType === "Image" ? (
-                <img
-                  src={previewDoc.dataUrl}
-                  alt={previewDoc.name}
-                  style={{
-                    maxWidth: "100%",
-                    display: "block",
-                    margin: "0 auto",
-                    borderRadius: "8px",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                  }}
-                />
-              ) : previewDoc.fileType === "PDF" ? (
-                <iframe
-                  src={previewDoc.dataUrl}
-                  title={previewDoc.name}
+                <div
                   style={{
                     width: "100%",
-                    height: "600px",
-                    border: "none",
-                    borderRadius: "8px",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                    overflow: window.innerWidth <= 768 ? "auto" : "hidden",
+                    WebkitOverflowScrolling: "touch",
                   }}
-                />
+                >
+                  <img
+                    src={previewDoc.dataUrl}
+                    alt={previewDoc.name}
+                    style={{
+                      maxWidth: "100%",
+                      width: window.innerWidth <= 768 ? "auto" : "100%",
+                      height: "auto",
+                      display: "block",
+                      margin: "0 auto",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                      touchAction: "pan-x pan-y pinch-zoom",
+                      cursor: window.innerWidth <= 768 ? "pointer" : "default",
+                    }}
+                    onClick={() => {
+                      // Open in new tab for better zoom control on mobile
+                      if (window.innerWidth <= 768) {
+                        window.open(previewDoc.dataUrl, "_blank");
+                      }
+                    }}
+                  />
+                  {window.innerWidth <= 768 && (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        marginTop: "12px",
+                        padding: "8px",
+                        background: "#e6f7ff",
+                        borderRadius: "4px",
+                        fontSize: "12px",
+                        color: "#1890ff",
+                      }}
+                    >
+                      💡 Tap image to open in full screen for zoom
+                    </div>
+                  )}
+                </div>
+              ) : previewDoc.fileType === "PDF" ? (
+                <div style={{ width: "100%" }}>
+                  <iframe
+                    src={previewDoc.dataUrl}
+                    title={previewDoc.name}
+                    style={{
+                      width: "100%",
+                      height: window.innerWidth > 768 ? "600px" : "60vh",
+                      border: "none",
+                      borderRadius: "8px",
+                      boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                    }}
+                  />
+                  {window.innerWidth <= 768 && (
+                    <div
+                      style={{
+                        textAlign: "center",
+                        marginTop: "12px",
+                        padding: "8px",
+                        background: "#fff7e6",
+                        borderRadius: "4px",
+                        fontSize: "12px",
+                        color: "#d46b08",
+                      }}
+                    >
+                      ⚠️ For better PDF viewing, use the Download button
+                    </div>
+                  )}
+                </div>
               ) : (
                 <Empty
                   description="Preview not available for this file type. Please download to view."
