@@ -164,10 +164,6 @@ export default function Payments() {
       (sum, p) => sum + (Number(p.amount) || 0),
       0
     );
-    const avgPayment =
-      paymentsUnique.length > 0
-        ? Math.round(totalSpent / paymentsUnique.length)
-        : 0;
 
     // Get last payment date
     const sortedPayments = [...paymentsUnique].sort(
@@ -216,7 +212,7 @@ export default function Payments() {
     return {
       thisMonthTotal,
       thisMonthCount: thisMonthPayments.length,
-      avgPayment,
+
       lastPaymentDate,
       totalPayments: paymentsUnique.length,
       monthlyTrend,
@@ -455,16 +451,6 @@ export default function Payments() {
                     )}
                   </div>
                 }
-              />
-            </Card>
-          </Col>
-          <Col xs={12} sm={12} md={6}>
-            <Card>
-              <Statistic
-                title="Average Payment"
-                value={paymentStats.avgPayment}
-                prefix="₹"
-                valueStyle={{ fontSize: "24px", color: "#52c41a" }}
               />
             </Card>
           </Col>

@@ -322,16 +322,6 @@ export default function WorkerDetails() {
                   <span>Number of Payments:</span>
                   <span><strong>${workerPayments.length}</strong></span>
                 </div>
-                <div class="total-row">
-                  <span>Average Payment:</span>
-                  <span><strong>₹${
-                    workerPayments.length > 0
-                      ? Math.round(
-                          totalPaid / workerPayments.length
-                        ).toLocaleString("en-IN")
-                      : 0
-                  }</strong></span>
-                </div>
                 <div class="total-row grand-total">
                   <span>TOTAL AMOUNT PAID:</span>
                   <span>₹${totalPaid.toLocaleString("en-IN")}</span>
@@ -637,24 +627,6 @@ export default function WorkerDetails() {
             <span>Number of Payments:</span>
             <strong>{workerPayments.length}</strong>
           </div>
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              margin: "8px 0",
-              fontSize: isMobile ? "13px" : "14px",
-            }}
-          >
-            <span>Average Payment:</span>
-            <strong>
-              ₹
-              {workerPayments.length > 0
-                ? Math.round(totalPaid / workerPayments.length).toLocaleString(
-                    "en-IN"
-                  )
-                : 0}
-            </strong>
-          </div>
           <Divider style={{ margin: "12px 0" }} />
           <div
             style={{
@@ -795,23 +767,6 @@ export default function WorkerDetails() {
                 Total Payments:{" "}
                 <strong style={{ color: "#1890ff" }}>
                   {workerPayments.length}
-                </strong>
-              </span>
-              <span
-                style={{
-                  fontSize: "14px",
-                  fontWeight: "normal",
-                  color: "#666",
-                }}
-              >
-                Avg Payment:{" "}
-                <strong style={{ color: "#52c41a" }}>
-                  ₹
-                  {workerPayments.length > 0
-                    ? Math.round(
-                        totalPaid / workerPayments.length
-                      ).toLocaleString()
-                    : 0}
                 </strong>
               </span>
             </Space>

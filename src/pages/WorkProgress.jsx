@@ -23,8 +23,6 @@ export default function WorkProgress() {
 
   // ===== Payment Summary =====
   const totalPaid = payments.reduce((a, b) => a + Number(b.amount || 0), 0);
-  const avgPayment =
-    payments.length > 0 ? Math.round(totalPaid / payments.length) : 0;
 
   // ===== Material Summary =====
   const totalMaterialCost = materials.reduce(
@@ -307,18 +305,10 @@ export default function WorkProgress() {
                     </div>
                   </Tooltip>
                 </Col>
-                <Col xs={12}>
+                <Col xs={24}>
                   <Statistic
                     title="Materials"
                     value={totalMaterialItems}
-                    valueStyle={{ fontSize: "18px" }}
-                  />
-                </Col>
-                <Col xs={12}>
-                  <Statistic
-                    title="Avg Payment"
-                    value={avgPayment}
-                    prefix="₹"
                     valueStyle={{ fontSize: "18px" }}
                   />
                 </Col>

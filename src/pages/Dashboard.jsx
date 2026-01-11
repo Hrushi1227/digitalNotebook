@@ -39,9 +39,10 @@ export default function Dashboard() {
   const totalSpend = materialSpend + laborSpend;
 
   // Count workers who have received at least one payment
-  const activeWorkers = workers.filter((w) =>
+  const activeWorkersList = workers.filter((w) =>
     payments.some((p) => p.workerId === w.id)
-  ).length;
+  );
+  const activeWorkers = activeWorkersList.length;
 
   /* -------- TOP MATERIAL CATEGORIES -------- */
 
@@ -86,7 +87,6 @@ export default function Dashboard() {
   /* -------- RECENT PAYMENTS -------- */
   const recentPayments = [...payments]
     .sort((a, b) => new Date(b.date) - new Date(a.date))
-    .slice(0, 10)
     .map((p) => ({
       ...p,
       workerName: workers.find((w) => w.id === p.workerId)?.name || "Unknown",
@@ -323,11 +323,15 @@ export default function Dashboard() {
             <Card title="Quick Stats" size="small">
               <Row gutter={[8, 8]}>
                 <Col xs={12}>
-                  <Statistic
-                    title="Workers"
-                    value={workers.length}
-                    valueStyle={{ fontSize: "18px" }}
-                  />
+                  <Link to="/workers" style={{ textDecoration: "none" }}>
+                    <div style={{ cursor: "pointer" }}>
+                      <Statistic
+                        title="Workers"
+                        value={workers.length}
+                        valueStyle={{ fontSize: "18px" }}
+                      />
+                    </div>
+                  </Link>
                 </Col>
                 <Col xs={12}>
                   <Tooltip
@@ -362,28 +366,71 @@ export default function Dashboard() {
                     }
                     styles={{ root: { maxWidth: "400px" } }}
                   >
-                    <div style={{ cursor: "pointer" }}>
-                      <Statistic
-                        title="Payments"
-                        value={payments.length}
-                        valueStyle={{ fontSize: "18px" }}
-                      />
-                    </div>
+                    <Link to="/payments" style={{ textDecoration: "none" }}>
+                      <div style={{ cursor: "pointer" }}>
+                        <Statistic
+                          title="Payments"
+                          value={payments.length}
+                          valueStyle={{ fontSize: "18px" }}
+                        />
+                      </div>
+                    </Link>
                   </Tooltip>
                 </Col>
                 <Col xs={12}>
-                  <Statistic
-                    title="Materials"
-                    value={materials.length}
-                    valueStyle={{ fontSize: "18px" }}
-                  />
+                  <Link to="/materials" style={{ textDecoration: "none" }}>
+                    <div style={{ cursor: "pointer" }}>
+                      <Statistic
+                        title="Materials"
+                        value={materials.length}
+                        valueStyle={{ fontSize: "18px" }}
+                      />
+                    </div>
+                  </Link>
                 </Col>
                 <Col xs={12}>
-                  <Statistic
-                    title="Active Workers"
-                    value={activeWorkers}
-                    valueStyle={{ fontSize: "18px", color: "#52c41a" }}
-                  />
+                  <Tooltip
+                    title={
+                      <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+                        <div
+                          style={{ fontWeight: "bold", marginBottom: "8px" }}
+                        >
+                          Active Workers (received payments):
+                        </div>
+                        <ul style={{ paddingLeft: "20px", margin: 0 }}>
+                          {activeWorkersList.map((w) => {
+                            const workerPaymentCount = payments.filter(
+                              (p) => p.workerId === w.id
+                            ).length;
+                            const workerTotal = payments
+                              .filter((p) => p.workerId === w.id)
+                              .reduce(
+                                (sum, p) => sum + Number(p.amount || 0),
+                                0
+                              );
+                            return (
+                              <li key={w.id} style={{ marginBottom: "4px" }}>
+                                {w.name} - {workerPaymentCount} payment
+                                {workerPaymentCount !== 1 ? "s" : ""} (₹
+                                {workerTotal.toLocaleString()})
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    }
+                    styles={{ root: { maxWidth: "400px" } }}
+                  >
+                    <Link to="/workers" style={{ textDecoration: "none" }}>
+                      <div style={{ cursor: "pointer" }}>
+                        <Statistic
+                          title="Active Workers"
+                          value={activeWorkers}
+                          valueStyle={{ fontSize: "18px", color: "#52c41a" }}
+                        />
+                      </div>
+                    </Link>
+                  </Tooltip>
                 </Col>
               </Row>
             </Card>
@@ -441,7 +488,7 @@ export default function Dashboard() {
 
       {/* RECENT PAYMENTS */}
       <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4 px-2 sm:px-0">
-        Recent Payments
+        Recent Payments ({payments.length})
       </h2>
 
       <div className="px-2 sm:px-0">
@@ -454,7 +501,11 @@ export default function Dashboard() {
                 }
                 dataSource={recentPayments}
                 columns={recentPaymentColumns}
-                pagination={false}
+                pagination={{
+                  pageSize: 10,
+                  showSizeChanger: true,
+                  pageSizeOptions: ["10", "20", "50"],
+                }}
                 scroll={{ x: "max-content" }}
                 size="small"
               />
