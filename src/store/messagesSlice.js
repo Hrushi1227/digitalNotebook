@@ -19,11 +19,16 @@ const messagesSlice = createSlice({
         else state.push(action.payload);
       },
       prepare(data) {
+        // If data already has an ID (from Firestore), use it
+        if (data.id) {
+          return { payload: data };
+        }
+        // Otherwise generate a temporary ID
         return {
           payload: {
             id: Math.random().toString(36).substr(2, 9),
             ...data,
-            timestamp: new Date().toISOString(),
+            timestamp: data.timestamp || new Date().toISOString(),
           },
         };
       },

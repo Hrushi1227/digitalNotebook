@@ -296,7 +296,7 @@ export default function WorkProgress() {
                         </div>
                       </div>
                     }
-                    overlayStyle={{ maxWidth: "400px" }}
+                    styles={{ root: { maxWidth: "400px" } }}
                   >
                     <div style={{ cursor: "pointer" }}>
                       <Statistic

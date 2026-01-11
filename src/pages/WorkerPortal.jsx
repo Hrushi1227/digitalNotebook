@@ -6,8 +6,6 @@ import {
   EyeOutlined,
   FileTextOutlined,
   LogoutOutlined,
-  MessageOutlined,
-  SendOutlined,
   UserOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
@@ -17,9 +15,7 @@ import {
   Button,
   Card,
   Col,
-  Divider,
   Empty,
-  Input,
   List,
   Modal,
   Row,
@@ -35,6 +31,7 @@ import { jsPDF } from "jspdf";
 import { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
+import WorkerFloatingChat from "../components/common/WorkerFloatingChat";
 import { addItem } from "../firebaseService";
 import { logout, selectWorkerId } from "../store/authSlice";
 import { selectDocuments } from "../store/documentsSlice";
@@ -792,8 +789,8 @@ export default function WorkerPortal() {
           </Card>
         )}
 
-        {/* Messages - Only show if worker is registered */}
-        {worker ? (
+        {/* Messages - Now using FloatingChat component instead */}
+        {/* {worker ? (
           <Card
             title={
               <Space>
@@ -934,7 +931,8 @@ export default function WorkerPortal() {
               </p>
             </Empty>
           </Card>
-        )}
+        )} */}
+        {/* End of old Messages card - replaced by WorkerFloatingChat */}
         <Modal
           open={previewOpen}
           title={
@@ -1089,6 +1087,7 @@ export default function WorkerPortal() {
           )}
         </Modal>
       </div>
+      <WorkerFloatingChat worker={worker} workerId={workerId} />
     </div>
   );
 }

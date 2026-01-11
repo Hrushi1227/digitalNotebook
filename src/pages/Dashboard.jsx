@@ -164,7 +164,7 @@ export default function Dashboard() {
                 </div>
               </div>
             }
-            overlayStyle={{ maxWidth: "400px" }}
+            styles={{ root: { maxWidth: "400px" } }}
           >
             <Tag color="blue" style={{ cursor: "pointer" }}>
               {count}
@@ -216,31 +216,41 @@ export default function Dashboard() {
           </Col>
 
           <Col xs={12} md={6}>
-            <Card>
-              <Statistic
-                title="Labor Cost"
-                value={laborSpend}
-                prefix="₹"
-                valueStyle={{
-                  color: "#1890ff",
-                  fontSize: window.innerWidth < 640 ? "18px" : "24px",
-                }}
-              />
-            </Card>
+            <Link to="/payments">
+              <Card
+                style={{ cursor: "pointer" }}
+                className="hover:shadow-lg transition-shadow"
+              >
+                <Statistic
+                  title="Labor Cost"
+                  value={laborSpend}
+                  prefix="₹"
+                  valueStyle={{
+                    color: "#1890ff",
+                    fontSize: window.innerWidth < 640 ? "18px" : "24px",
+                  }}
+                />
+              </Card>
+            </Link>
           </Col>
 
           <Col xs={12} md={6}>
-            <Card>
-              <Statistic
-                title="Material Cost"
-                value={materialSpend}
-                prefix="₹"
-                valueStyle={{
-                  color: "#52c41a",
-                  fontSize: window.innerWidth < 640 ? "18px" : "24px",
-                }}
-              />
-            </Card>
+            <Link to="/materials">
+              <Card
+                style={{ cursor: "pointer" }}
+                className="hover:shadow-lg transition-shadow"
+              >
+                <Statistic
+                  title="Material Cost"
+                  value={materialSpend}
+                  prefix="₹"
+                  valueStyle={{
+                    color: "#52c41a",
+                    fontSize: window.innerWidth < 640 ? "18px" : "24px",
+                  }}
+                />
+              </Card>
+            </Link>
           </Col>
 
           <Col xs={24} md={6}>
@@ -350,7 +360,7 @@ export default function Dashboard() {
                         </div>
                       </div>
                     }
-                    overlayStyle={{ maxWidth: "400px" }}
+                    styles={{ root: { maxWidth: "400px" } }}
                   >
                     <div style={{ cursor: "pointer" }}>
                       <Statistic
@@ -439,7 +449,9 @@ export default function Dashboard() {
           {recentPayments.length ? (
             <div className="overflow-x-auto -mx-6 sm:mx-0">
               <Table
-                rowKey={(record, idx) => idx}
+                rowKey={(record) =>
+                  record.id || `${record.workerId}-${record.date}`
+                }
                 dataSource={recentPayments}
                 columns={recentPaymentColumns}
                 pagination={false}

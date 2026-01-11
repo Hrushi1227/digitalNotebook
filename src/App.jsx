@@ -2,7 +2,6 @@ import {
   DashboardOutlined,
   LogoutOutlined,
   MenuOutlined,
-  MessageOutlined,
   ShoppingCartOutlined,
   TeamOutlined,
   WalletOutlined,
@@ -18,6 +17,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 
+import FloatingChat from "./components/common/FloatingChat";
 import Dashboard from "./pages/Dashboard";
 import Documents from "./pages/Documents";
 import Login from "./pages/Login";
@@ -63,11 +63,6 @@ const items = [
     key: "/payments",
     icon: <WalletOutlined />,
     label: <Link to="/payments">Payments</Link>,
-  },
-  {
-    key: "/messages",
-    icon: <MessageOutlined />,
-    label: <Link to="/messages">Messages</Link>,
   },
 ];
 
@@ -184,6 +179,7 @@ export default function App() {
             © {new Date().getFullYear()} Breeza
           </Footer>
         </Layout>
+        <FloatingChat />
       </Layout>
     );
   }
@@ -255,6 +251,7 @@ export default function App() {
           © {new Date().getFullYear()} Breeza
         </Footer>
       </Layout>
+      <FloatingChat />
     </Layout>
   );
 }
