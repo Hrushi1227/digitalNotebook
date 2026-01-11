@@ -1,4 +1,5 @@
 import {
+  CloudOutlined,
   DashboardOutlined,
   LogoutOutlined,
   MenuOutlined,
@@ -18,12 +19,14 @@ import {
 } from "react-router-dom";
 
 import FloatingChat from "./components/common/FloatingChat";
+import GlobalSearch from "./components/common/GlobalSearch";
 import Dashboard from "./pages/Dashboard";
 import Documents from "./pages/Documents";
 import Login from "./pages/Login";
 import Materials from "./pages/Materials";
 import Messages from "./pages/Messages";
 import Payments from "./pages/Payments";
+import StorageManager from "./pages/StorageManager";
 import UniversalLogin from "./pages/UniversalLogin";
 import WorkerDetails from "./pages/WorkerDetails";
 import WorkerPortal from "./pages/WorkerPortal";
@@ -63,6 +66,11 @@ const items = [
     key: "/payments",
     icon: <WalletOutlined />,
     label: <Link to="/payments">Payments</Link>,
+  },
+  {
+    key: "/storage",
+    icon: <CloudOutlined />,
+    label: <Link to="/storage">Storage</Link>,
   },
 ];
 
@@ -145,22 +153,25 @@ export default function App() {
                 Renovation Tracker
               </div>
             </div>
-            <Button
-              type="text"
-              danger
-              onClick={handleLogout}
-              icon={<LogoutOutlined />}
-              className="hidden sm:inline-flex"
-            >
-              Logout
-            </Button>
-            <Button
-              type="text"
-              danger
-              onClick={handleLogout}
-              icon={<LogoutOutlined />}
-              className="sm:hidden"
-            />
+            <div className="flex items-center gap-2">
+              <GlobalSearch />
+              <Button
+                type="text"
+                danger
+                onClick={handleLogout}
+                icon={<LogoutOutlined />}
+                className="hidden sm:inline-flex"
+              >
+                Logout
+              </Button>
+              <Button
+                type="text"
+                danger
+                onClick={handleLogout}
+                icon={<LogoutOutlined />}
+                className="sm:hidden"
+              />
+            </div>
           </Header>
           <Content className="p-2 sm:p-4 md:p-6 bg-gray-50 min-h-screen">
             <div className="w-full max-w-7xl mx-auto">
@@ -171,6 +182,7 @@ export default function App() {
                 <Route path="/materials" element={<Materials />} />
                 <Route path="/documents" element={<Documents />} />
                 <Route path="/payments" element={<Payments />} />
+                <Route path="/storage" element={<StorageManager />} />
                 <Route path="/messages" element={<Messages />} />
               </Routes>
             </div>
@@ -225,14 +237,17 @@ export default function App() {
             </div>
             <div className="text-xl font-semibold">Home Renovation Tracker</div>
           </div>
-          <Button
-            type="text"
-            danger
-            onClick={handleLogout}
-            icon={<LogoutOutlined />}
-          >
-            Logout
-          </Button>
+          <div className="flex items-center gap-2">
+            <GlobalSearch />
+            <Button
+              type="text"
+              danger
+              onClick={handleLogout}
+              icon={<LogoutOutlined />}
+            >
+              Logout
+            </Button>
+          </div>
         </Header>
         <Content className="p-6 bg-gray-50 min-h-screen">
           <div className="max-w-7xl mx-auto">
@@ -243,6 +258,7 @@ export default function App() {
               <Route path="/materials" element={<Materials />} />
               <Route path="/documents" element={<Documents />} />
               <Route path="/payments" element={<Payments />} />
+              <Route path="/storage" element={<StorageManager />} />
               <Route path="/messages" element={<Messages />} />
             </Routes>
           </div>
