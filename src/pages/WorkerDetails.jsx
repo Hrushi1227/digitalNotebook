@@ -369,7 +369,18 @@ export default function WorkerDetails() {
       .substring(0, 3)
       .toUpperCase()}-${Date.now().toString().slice(-6)}`;
 
-    const isMobile = window.innerWidth <= 768;
+    // Detect mobile viewport - use actual screen width
+    const isMobile = typeof window !== "undefined" && window.innerWidth <= 768;
+
+    // Debug log
+    console.log(
+      "Invoice Preview - isMobile:",
+      isMobile,
+      "width:",
+      window.innerWidth,
+      "payments:",
+      workerPayments.length
+    );
 
     return (
       <div style={{ padding: isMobile ? "10px" : "20px" }}>
@@ -469,53 +480,141 @@ export default function WorkerDetails() {
           Payment History
         </Divider>
 
-        {/* Payments Table */}
-        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-          <Table
-            dataSource={workerPayments}
-            columns={[
-              {
-                title: "Sr.",
-                render: (_, __, index) => index + 1,
-                width: isMobile ? 40 : "10%",
-              },
-              {
-                title: "Date",
-                dataIndex: "date",
-                width: isMobile ? 90 : "25%",
-                render: (date) => (isMobile ? date.substring(5) : date), // Show MM-DD on mobile
-              },
-              {
-                title: "Amount",
-                dataIndex: "amount",
-                width: isMobile ? 80 : "20%",
-                render: (v) => (
-                  <span
+        {/* Payments - Mobile Card View / Desktop Table View */}
+        {isMobile ? (
+          // Mobile Card View
+          <div
+            style={{
+              maxHeight: "250px",
+              overflowY: "auto",
+              background: "#f5f5f5",
+              padding: "10px",
+              borderRadius: "8px",
+            }}
+          >
+            {workerPayments.length > 0 ? (
+              workerPayments.map((payment, index) => (
+                <div
+                  key={payment.id || index}
+                  style={{
+                    background: "#fff",
+                    border: "2px solid #d9d9d9",
+                    borderRadius: "8px",
+                    padding: "14px",
+                    marginBottom: "12px",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                  }}
+                >
+                  <div
                     style={{
-                      color: "#52c41a",
-                      fontWeight: "600",
-                      fontSize: isMobile ? "13px" : "15px",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      marginBottom: "10px",
                     }}
                   >
-                    ₹{Number(v).toLocaleString("en-IN")}
-                  </span>
-                ),
-              },
-              {
-                title: "Note",
-                dataIndex: "note",
-                render: (v) => v || "—",
-                ellipsis: true,
-              },
-            ]}
-            pagination={false}
-            size="small"
-            scroll={{
-              x: isMobile ? "max-content" : undefined,
-              y: isMobile ? 250 : 300,
-            }}
-          />
-        </div>
+                    <span
+                      style={{
+                        fontSize: "12px",
+                        color: "#1890ff",
+                        fontWeight: "600",
+                        background: "#e6f7ff",
+                        padding: "2px 8px",
+                        borderRadius: "4px",
+                      }}
+                    >
+                      Payment #{index + 1}
+                    </span>
+                    <span
+                      style={{
+                        fontSize: "13px",
+                        color: "#666",
+                        fontWeight: "500",
+                      }}
+                    >
+                      📅 {payment.date}
+                    </span>
+                  </div>
+                  <div
+                    style={{
+                      fontSize: "20px",
+                      fontWeight: "700",
+                      color: "#52c41a",
+                      marginBottom: "8px",
+                    }}
+                  >
+                    💰 ₹{Number(payment.amount).toLocaleString("en-IN")}
+                  </div>
+                  {payment.note && (
+                    <div
+                      style={{
+                        fontSize: "13px",
+                        color: "#666",
+                        fontStyle: "italic",
+                        background: "#fafafa",
+                        padding: "6px",
+                        borderRadius: "4px",
+                        borderLeft: "3px solid #1890ff",
+                      }}
+                    >
+                      📝 {payment.note}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div
+                style={{ textAlign: "center", padding: "20px", color: "#999" }}
+              >
+                No payments recorded
+              </div>
+            )}
+          </div>
+        ) : (
+          // Desktop Table View
+          <div style={{ overflowX: "auto" }}>
+            <Table
+              dataSource={workerPayments}
+              columns={[
+                {
+                  title: "Sr.",
+                  render: (_, __, index) => index + 1,
+                  width: "10%",
+                },
+                {
+                  title: "Date",
+                  dataIndex: "date",
+                  width: "25%",
+                },
+                {
+                  title: "Amount",
+                  dataIndex: "amount",
+                  width: "20%",
+                  render: (v) => (
+                    <span
+                      style={{
+                        color: "#52c41a",
+                        fontWeight: "600",
+                        fontSize: "15px",
+                      }}
+                    >
+                      ₹{Number(v).toLocaleString("en-IN")}
+                    </span>
+                  ),
+                },
+                {
+                  title: "Note",
+                  dataIndex: "note",
+                  render: (v) => v || "—",
+                  ellipsis: true,
+                },
+              ]}
+              pagination={false}
+              size="small"
+              scroll={{ y: 300 }}
+            />
+          </div>
+        )}
 
         {/* Totals */}
         <div
