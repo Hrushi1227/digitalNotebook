@@ -10,6 +10,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { addItem } from "../../firebaseService";
 import { selectWorkerId } from "../../store/authSlice";
 import { addMessage, selectWorkerMessages } from "../../store/messagesSlice";
+import {
+  chatStyles,
+  formatChatTime,
+  sortMessagesByActivity,
+} from "../../utils/chat";
 
 export default function WorkerFloatingChat({ worker, workerId: propWorkerId }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -48,23 +53,33 @@ export default function WorkerFloatingChat({ worker, workerId: propWorkerId }) {
     actualWorkerId,
   ]);
 
-  // Sort messages by latest activity (message timestamp or reply timestamp, whichever is later)
-  const sortedMessages = useMemo(() => {
-    return [...messages].sort((a, b) => {
-      const aLatest = a.replyTime
-        ? new Date(a.replyTime)
-        : new Date(a.timestamp);
-      const bLatest = b.replyTime
-        ? new Date(b.replyTime)
-        : new Date(b.timestamp);
-      return aLatest - bLatest; // Oldest activity first
-    });
-  }, [messages]);
+  // Sort messages by latest activity
+  const sortedMessages = useMemo(
+    () => sortMessagesByActivity(messages),
+    [messages]
+  );
 
-  // Calculate unread count (messages without reply)
-  const unreadCount = useMemo(() => {
-    return messages.filter((m) => !m.reply).length;
-  }, [messages]);
+  // Calculate unread count (only count messages with replies not viewed by worker)
+  const unreadCount = useMemo(
+    () => messages.filter((m) => m.reply && !m.workerViewed).length,
+    [messages]
+  );
+
+  // Mark messages with replies as viewed when worker opens chat
+  useEffect(() => {
+    if (isOpen) {
+      messages.forEach(async (msg) => {
+        if (msg.reply && !msg.workerViewed) {
+          try {
+            await updateItem("messages", msg.id, { workerViewed: true });
+            dispatch(addMessage({ ...msg, workerViewed: true }));
+          } catch (e) {
+            console.error("Error marking message as viewed:", e);
+          }
+        }
+      });
+    }
+  }, [isOpen, messages, dispatch]);
 
   const handleSendMessage = async () => {
     if (!messageText.trim()) return;
@@ -100,35 +115,11 @@ export default function WorkerFloatingChat({ worker, workerId: propWorkerId }) {
     }
   };
 
-  // Format timestamp
-  const formatTime = (timestamp) => {
-    if (!timestamp) return "";
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
   return (
     <>
       {/* Floating Chat Button - Hide when chat is open */}
       {!isOpen && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "24px",
-            right: "24px",
-            zIndex: 1000,
-          }}
-        >
+        <div style={chatStyles.floatingButton}>
           <Badge count={unreadCount} offset={[-5, 5]}>
             <Button
               type="primary"
@@ -137,12 +128,8 @@ export default function WorkerFloatingChat({ worker, workerId: propWorkerId }) {
               icon={<MessageOutlined />}
               onClick={() => setIsOpen(true)}
               style={{
-                width: "60px",
-                height: "60px",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                fontSize: "24px",
+                ...chatStyles.buttonStyle,
                 background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                border: "none",
               }}
             />
           </Badge>
@@ -152,19 +139,10 @@ export default function WorkerFloatingChat({ worker, workerId: propWorkerId }) {
       {/* Chat Tray */}
       <div
         style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
+          ...chatStyles.trayContainer,
           width: isOpen ? "380px" : "0",
           maxWidth: "90vw",
-          height: "100vh",
-          background: "#fff",
           boxShadow: isOpen ? "2px 0 8px rgba(0,0,0,0.15)" : "none",
-          transition: "width 0.3s ease-in-out",
-          overflow: "hidden",
-          zIndex: 999,
-          display: "flex",
-          flexDirection: "column",
         }}
       >
         {isOpen && (
@@ -247,8 +225,8 @@ export default function WorkerFloatingChat({ worker, workerId: propWorkerId }) {
                         >
                           {msg?.message || "No message text"}
                         </div>
-                        <div style={{ fontSize: "11px", color: "#999" }}>
-                          {formatTime(msg.timestamp)}
+                        <div style={chatStyles.timestamp}>
+                          {formatChatTime(msg.timestamp)}
                         </div>
                       </div>
 
@@ -278,17 +256,9 @@ export default function WorkerFloatingChat({ worker, workerId: propWorkerId }) {
                             <CheckCircleOutlined />
                             OWNER'S REPLY
                           </div>
-                          <div
-                            style={{
-                              fontSize: "13px",
-                              color: "#333",
-                              marginBottom: "6px",
-                            }}
-                          >
-                            {msg.reply}
-                          </div>
-                          <div style={{ fontSize: "11px", color: "#999" }}>
-                            {formatTime(msg.replyTime)}
+                          <div style={chatStyles.messageText}>{msg.reply}</div>
+                          <div style={chatStyles.timestamp}>
+                            {formatChatTime(msg.replyTime)}
                           </div>
                         </div>
                       )}
@@ -346,18 +316,7 @@ export default function WorkerFloatingChat({ worker, workerId: propWorkerId }) {
 
       {/* Overlay (when chat is open) */}
       {isOpen && (
-        <div
-          onClick={() => setIsOpen(false)}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            width: "100vw",
-            height: "100vh",
-            background: "rgba(0,0,0,0.3)",
-            zIndex: 998,
-          }}
-        />
+        <div onClick={() => setIsOpen(false)} style={chatStyles.overlay} />
       )}
     </>
   );

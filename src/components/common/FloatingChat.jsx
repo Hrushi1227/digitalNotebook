@@ -5,10 +5,11 @@ import {
   UserOutlined,
 } from "@ant-design/icons";
 import { Avatar, Badge, Button, Empty, Input, List, Space } from "antd";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { updateItem } from "../../firebaseService";
 import { addMessage, selectMessages } from "../../store/messagesSlice";
+import { chatStyles, formatChatTime } from "../../utils/chat";
 
 export default function FloatingChat() {
   const [isOpen, setIsOpen] = useState(false);
@@ -37,10 +38,28 @@ export default function FloatingChat() {
     return grouped;
   }, [messages]);
 
-  // Calculate unread count
-  const unreadCount = useMemo(() => {
-    return messages.filter((m) => !m.reply).length;
-  }, [messages]);
+  // Calculate unread count (only count messages not viewed by admin)
+  const unreadCount = useMemo(
+    () => messages.filter((m) => !m.reply && !m.adminViewed).length,
+    [messages]
+  );
+
+  // Mark messages as viewed when admin opens a worker's conversation
+  useEffect(() => {
+    if (selectedWorker && isOpen) {
+      const workerMessages = groupedByWorker[selectedWorker] || [];
+      workerMessages.forEach(async (msg) => {
+        if (!msg.adminViewed && !msg.reply) {
+          try {
+            await updateItem("messages", msg.id, { adminViewed: true });
+            dispatch(addMessage({ ...msg, adminViewed: true }));
+          } catch (e) {
+            console.error("Error marking message as viewed:", e);
+          }
+        }
+      });
+    }
+  }, [selectedWorker, isOpen, groupedByWorker, dispatch]);
 
   const handleReply = async (messageId) => {
     const replyText = replyTexts[messageId];
@@ -87,35 +106,11 @@ export default function FloatingChat() {
     }
   };
 
-  // Format timestamp
-  const formatTime = (timestamp) => {
-    if (!timestamp) return "";
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMins / 60);
-    const diffDays = Math.floor(diffHours / 24);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
   return (
     <>
       {/* Floating Chat Button - Hide when chat is open */}
       {!isOpen && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "24px",
-            right: "24px",
-            zIndex: 1000,
-          }}
-        >
+        <div style={chatStyles.floatingButton}>
           <Badge count={unreadCount} offset={[-5, 5]}>
             <Button
               type="primary"
@@ -123,12 +118,7 @@ export default function FloatingChat() {
               size="large"
               icon={<MessageOutlined />}
               onClick={() => setIsOpen(true)}
-              style={{
-                width: "60px",
-                height: "60px",
-                boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                fontSize: "24px",
-              }}
+              style={chatStyles.buttonStyle}
             />
           </Badge>
         </div>
@@ -137,19 +127,10 @@ export default function FloatingChat() {
       {/* Chat Tray */}
       <div
         style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
+          ...chatStyles.trayContainer,
           width: isOpen ? "380px" : "0",
           maxWidth: "90vw",
-          height: "100vh",
-          background: "#fff",
           boxShadow: isOpen ? "2px 0 8px rgba(0,0,0,0.15)" : "none",
-          transition: "width 0.3s ease-in-out",
-          overflow: "hidden",
-          zIndex: 999,
-          display: "flex",
-          flexDirection: "column",
         }}
       >
         {isOpen && (
@@ -204,7 +185,7 @@ export default function FloatingChat() {
                       renderItem={(workerName) => {
                         const workerMsgs = groupedByWorker[workerName];
                         const unrepliedCount = workerMsgs.filter(
-                          (m) => !m.reply
+                          (m) => !m.reply && !m.adminViewed
                         ).length;
                         const lastMsg = workerMsgs[0];
 
@@ -273,7 +254,7 @@ export default function FloatingChat() {
                                   <span
                                     style={{ marginLeft: "8px", color: "#999" }}
                                   >
-                                    · {formatTime(lastMsg.timestamp)}
+                                    · {formatChatTime(lastMsg.timestamp)}
                                   </span>
                                 </div>
                               }
@@ -343,29 +324,19 @@ export default function FloatingChat() {
                           >
                             {msg?.message || "No message text"}
                           </div>
-                          <div style={{ fontSize: "11px", color: "#999" }}>
-                            {formatTime(msg.timestamp)}
+                          <div style={chatStyles.timestamp}>
+                            {formatChatTime(msg.timestamp)}
                           </div>
                         </div>
 
                         {/* Admin Reply (if exists) */}
                         {msg.reply && (
-                          <div
-                            style={{
-                              background: "#1890ff",
-                              color: "#fff",
-                              padding: "10px 14px",
-                              borderRadius: "12px",
-                              marginLeft: "20px",
-                            }}
-                          >
-                            <div
-                              style={{ fontSize: "13px", marginBottom: "4px" }}
-                            >
+                          <div style={chatStyles.messageBubbleReply}>
+                            <div style={chatStyles.messageText}>
                               {msg.reply}
                             </div>
                             <div style={{ fontSize: "11px", opacity: 0.8 }}>
-                              {formatTime(msg.replyTime)} · You
+                              {formatChatTime(msg.replyTime)} · You
                             </div>
                           </div>
                         )}
