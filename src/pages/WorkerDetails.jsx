@@ -369,23 +369,31 @@ export default function WorkerDetails() {
       .substring(0, 3)
       .toUpperCase()}-${Date.now().toString().slice(-6)}`;
 
+    const isMobile = window.innerWidth <= 768;
+
     return (
-      <div style={{ padding: "20px" }}>
+      <div style={{ padding: isMobile ? "10px" : "20px" }}>
         {/* Header */}
         <div
           style={{
             background: "linear-gradient(135deg, #1890ff 0%, #096dd9 100%)",
             color: "white",
-            padding: "30px",
+            padding: isMobile ? "20px 15px" : "30px",
             textAlign: "center",
             marginBottom: "20px",
             borderRadius: "8px",
           }}
         >
-          <Title level={2} style={{ color: "white", margin: 0 }}>
+          <Title level={isMobile ? 3 : 2} style={{ color: "white", margin: 0 }}>
             PAYMENT INVOICE
           </Title>
-          <Text style={{ color: "white", opacity: 0.9 }}>
+          <Text
+            style={{
+              color: "white",
+              opacity: 0.9,
+              fontSize: isMobile ? "12px" : "14px",
+            }}
+          >
             Professional Service Bill
           </Text>
         </div>
@@ -393,54 +401,58 @@ export default function WorkerDetails() {
         {/* Invoice Meta */}
         <div
           style={{
-            display: "flex",
+            display: isMobile ? "block" : "flex",
             justifyContent: "space-between",
-            marginBottom: "25px",
+            marginBottom: "20px",
             background: "#f5f5f5",
-            padding: "20px",
+            padding: isMobile ? "15px" : "20px",
             borderRadius: "8px",
           }}
         >
-          <div>
+          <div style={{ marginBottom: isMobile ? "15px" : "0" }}>
             <Text
               strong
               style={{
                 color: "#1890ff",
                 display: "block",
                 marginBottom: "10px",
+                fontSize: isMobile ? "13px" : "14px",
               }}
             >
               BILLED TO:
             </Text>
-            <div>
+            <div style={{ fontSize: isMobile ? "13px" : "14px" }}>
               <strong>{worker.name}</strong>
             </div>
-            <div>
+            <div style={{ fontSize: isMobile ? "12px" : "14px" }}>
               <PhoneOutlined /> +91{worker.phone}
             </div>
-            <div>
+            <div style={{ fontSize: isMobile ? "12px" : "14px" }}>
               <UserOutlined /> {worker.profession}
             </div>
-            <div>Rate: ₹{worker.rate}/day</div>
+            <div style={{ fontSize: isMobile ? "12px" : "14px" }}>
+              Rate: ₹{worker.rate}/day
+            </div>
           </div>
-          <div style={{ textAlign: "right" }}>
+          <div style={{ textAlign: isMobile ? "left" : "right" }}>
             <Text
               strong
               style={{
                 color: "#1890ff",
                 display: "block",
                 marginBottom: "10px",
+                fontSize: isMobile ? "13px" : "14px",
               }}
             >
               INVOICE DETAILS:
             </Text>
-            <div>
+            <div style={{ fontSize: isMobile ? "12px" : "14px" }}>
               <strong>Invoice #:</strong> {invoiceNumber}
             </div>
-            <div>
+            <div style={{ fontSize: isMobile ? "12px" : "14px" }}>
               <strong>Date:</strong> {currentDate}
             </div>
-            <div>
+            <div style={{ fontSize: isMobile ? "12px" : "14px" }}>
               <strong>Total Payments:</strong> {workerPayments.length}
             </div>
           </div>
@@ -448,55 +460,69 @@ export default function WorkerDetails() {
 
         <Divider
           orientation="left"
-          style={{ fontSize: "16px", fontWeight: "600" }}
+          style={{
+            fontSize: isMobile ? "14px" : "16px",
+            fontWeight: "600",
+            margin: isMobile ? "16px 0" : "24px 0",
+          }}
         >
           Payment History
         </Divider>
 
         {/* Payments Table */}
-        <Table
-          dataSource={workerPayments}
-          columns={[
-            {
-              title: "Sr. No.",
-              render: (_, __, index) => index + 1,
-              width: "10%",
-            },
-            { title: "Payment Date", dataIndex: "date", width: "25%" },
-            {
-              title: "Amount",
-              dataIndex: "amount",
-              width: "20%",
-              render: (v) => (
-                <span
-                  style={{
-                    color: "#52c41a",
-                    fontWeight: "600",
-                    fontSize: "15px",
-                  }}
-                >
-                  ₹{Number(v).toLocaleString("en-IN")}
-                </span>
-              ),
-            },
-            {
-              title: "Description / Note",
-              dataIndex: "note",
-              render: (v) => v || "—",
-              ellipsis: true,
-            },
-          ]}
-          pagination={false}
-          size="small"
-          scroll={{ y: 300 }}
-        />
+        <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <Table
+            dataSource={workerPayments}
+            columns={[
+              {
+                title: "Sr.",
+                render: (_, __, index) => index + 1,
+                width: isMobile ? 40 : "10%",
+              },
+              {
+                title: "Date",
+                dataIndex: "date",
+                width: isMobile ? 90 : "25%",
+                render: (date) => (isMobile ? date.substring(5) : date), // Show MM-DD on mobile
+              },
+              {
+                title: "Amount",
+                dataIndex: "amount",
+                width: isMobile ? 80 : "20%",
+                render: (v) => (
+                  <span
+                    style={{
+                      color: "#52c41a",
+                      fontWeight: "600",
+                      fontSize: isMobile ? "13px" : "15px",
+                    }}
+                  >
+                    ₹{Number(v).toLocaleString("en-IN")}
+                  </span>
+                ),
+              },
+              {
+                title: "Note",
+                dataIndex: "note",
+                render: (v) => v || "—",
+                ellipsis: true,
+              },
+            ]}
+            pagination={false}
+            size="small"
+            scroll={{
+              x: isMobile ? "max-content" : undefined,
+              y: isMobile ? 250 : 300,
+            }}
+          />
+        </div>
 
         {/* Totals */}
         <div
           style={{
             marginTop: "20px",
             background: "#e6f7ff",
-            padding: "20px",
+            padding: isMobile ? "15px" : "20px",
             borderRadius: "8px",
             borderLeft: "4px solid #1890ff",
           }}
@@ -506,6 +532,7 @@ export default function WorkerDetails() {
               display: "flex",
               justifyContent: "space-between",
               margin: "8px 0",
+              fontSize: isMobile ? "13px" : "14px",
             }}
           >
             <span>Number of Payments:</span>
@@ -516,6 +543,7 @@ export default function WorkerDetails() {
               display: "flex",
               justifyContent: "space-between",
               margin: "8px 0",
+              fontSize: isMobile ? "13px" : "14px",
             }}
           >
             <span>Average Payment:</span>
@@ -533,12 +561,15 @@ export default function WorkerDetails() {
             style={{
               display: "flex",
               justifyContent: "space-between",
-              fontSize: "20px",
+              fontSize: isMobile ? "16px" : "20px",
               fontWeight: "bold",
               color: "#1890ff",
+              flexWrap: "wrap",
             }}
           >
-            <span>TOTAL AMOUNT PAID:</span>
+            <span style={{ marginBottom: isMobile ? "5px" : "0" }}>
+              TOTAL AMOUNT PAID:
+            </span>
             <span>₹{totalPaid.toLocaleString("en-IN")}</span>
           </div>
         </div>
@@ -546,10 +577,10 @@ export default function WorkerDetails() {
         {/* Footer Note */}
         <div
           style={{
-            marginTop: "25px",
+            marginTop: isMobile ? "20px" : "25px",
             textAlign: "center",
             color: "#666",
-            fontSize: "12px",
+            fontSize: isMobile ? "11px" : "12px",
           }}
         >
           <div>This is a computer-generated invoice for payment records.</div>
@@ -561,7 +592,7 @@ export default function WorkerDetails() {
               marginTop: "10px",
               color: "#1890ff",
               fontWeight: "600",
-              fontSize: "14px",
+              fontSize: isMobile ? "13px" : "14px",
             }}
           >
             Breeza - Home Renovation Tracker
@@ -770,9 +801,18 @@ export default function WorkerDetails() {
           </span>
         }
         onCancel={() => setPreviewOpen(false)}
-        width={900}
+        width="100%"
+        style={{
+          top: window.innerWidth > 768 ? 20 : 0,
+          paddingBottom: 0,
+          maxWidth: window.innerWidth > 768 ? "900px" : "100vw",
+        }}
         footer={[
-          <Button key="close" onClick={() => setPreviewOpen(false)}>
+          <Button
+            key="close"
+            onClick={() => setPreviewOpen(false)}
+            size={window.innerWidth <= 768 ? "large" : "middle"}
+          >
             Close
           </Button>,
           <Button
@@ -783,11 +823,18 @@ export default function WorkerDetails() {
               setPreviewOpen(false);
               handlePrintBill();
             }}
+            size={window.innerWidth <= 768 ? "large" : "middle"}
           >
             Print Invoice
           </Button>,
         ]}
-        bodyStyle={{ maxHeight: "70vh", overflowY: "auto" }}
+        bodyStyle={{
+          maxHeight: window.innerWidth > 768 ? "70vh" : "75vh",
+          overflowY: "auto",
+          overflowX: "hidden",
+          padding: window.innerWidth > 768 ? "24px" : "12px",
+        }}
+        centered={window.innerWidth > 768}
       >
         <BillPreviewContent />
       </Modal>
