@@ -81,18 +81,21 @@ export default function Materials() {
       title: "Item Name",
       dataIndex: "name",
       width: 200,
+      sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
       title: "Price",
       dataIndex: "price",
       render: (v) => <b className="text-green-600">₹{v?.toLocaleString()}</b>,
       width: 120,
+      sorter: (a, b) => (a.price || 0) - (b.price || 0),
     },
     {
       title: "Category",
       dataIndex: "category",
       render: (cat) => <Tag color="blue">{cat || "Other"}</Tag>,
       width: 120,
+      sorter: (a, b) => (a.category || "").localeCompare(b.category || ""),
     },
     {
       title: "Vendor",
@@ -122,6 +125,8 @@ export default function Materials() {
       title: "Date",
       dataIndex: "date",
       width: 110,
+      sorter: (a, b) => new Date(a.date) - new Date(b.date),
+      defaultSortOrder: "descend",
     },
     {
       title: "Note",
@@ -372,6 +377,7 @@ export default function Materials() {
               columns={columns}
               scroll={{ x: "max-content" }}
               pagination={{ pageSize: 10 }}
+              showSorterTooltip={{ title: "Click to sort" }}
             />
           </div>
         </Card>
