@@ -9,19 +9,23 @@ import {
   MoreOutlined,
   RiseOutlined,
   SearchOutlined,
+  SendOutlined,
   UserOutlined,
   WalletOutlined,
 } from "@ant-design/icons";
 import {
+  Alert,
   Badge,
   Button,
   Card,
+  Checkbox,
   Col,
   DatePicker,
   Dropdown,
   Form,
   Input,
   InputNumber,
+  message,
   Modal,
   Row,
   Segmented,
@@ -51,6 +55,13 @@ import {
 import { selectWorkers } from "../store/workersSlice";
 
 import { addItem, deleteItem, updateItem } from "../firebaseService";
+import { generatePaymentInvoice } from "../utils/invoice";
+import {
+  getSMSInfo,
+  isSMSConfigured,
+  previewPaymentSMS,
+  sendPaymentSMS,
+} from "../utils/sms";
 
 export default function Payments() {
   const payments = useSelector(selectPayments);
@@ -60,6 +71,9 @@ export default function Payments() {
   const [open, setOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState(null);
   const [form] = Form.useForm();
+  const [sendSMS, setSendSMS] = useState(false);
+  const [smsPreview, setSmsPreview] = useState("");
+  const [sendingSMS, setSendingSMS] = useState(false);
   const [searchText, setSearchText] = useState("");
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [dateRange, setDateRange] = useState(null);
@@ -629,27 +643,72 @@ export default function Payments() {
           layout="vertical"
           initialValues={{ date: dayjs() }}
           onFinish={async (vals) => {
-            const payload = {
-              workerId: vals.workerId,
-              amount: vals.amount,
-              note: vals.note || "",
-              date: vals.date.format("YYYY-MM-DD"),
-              createdAt: editingPayment?.createdAt || new Date().toISOString(),
-            };
+            try {
+              const payload = {
+                workerId: vals.workerId,
+                amount: vals.amount,
+                note: vals.note || "",
+                date: vals.date.format("YYYY-MM-DD"),
+                createdAt:
+                  editingPayment?.createdAt || new Date().toISOString(),
+              };
 
-            if (editingPayment) {
-              // Update existing payment
-              await updateItem("payments", editingPayment.id, payload);
-              dispatch(updatePayment({ id: editingPayment.id, ...payload }));
-            } else {
-              // Add new payment
-              const res = await addItem("payments", payload);
-              dispatch(addPayment({ id: res.id, ...payload }));
+              let paymentId;
+
+              if (editingPayment) {
+                // Update existing payment
+                await updateItem("payments", editingPayment.id, payload);
+                dispatch(updatePayment({ id: editingPayment.id, ...payload }));
+                paymentId = editingPayment.id;
+                message.success("Payment updated successfully");
+              } else {
+                // Add new payment
+                const res = await addItem("payments", payload);
+                dispatch(addPayment({ id: res.id, ...payload }));
+                paymentId = res.id;
+                message.success("Payment recorded successfully");
+
+                // Send SMS if enabled
+                if (sendSMS && isSMSConfigured()) {
+                  setSendingSMS(true);
+                  try {
+                    const worker = workers.find((w) => w.id === vals.workerId);
+                    const paymentData = { id: paymentId, ...payload };
+
+                    // Generate invoice PDF
+                    const invoicePDF = generatePaymentInvoice(
+                      paymentData,
+                      worker
+                    );
+
+                    // Send SMS (without invoice link for now - invoice is embedded in app)
+                    const smsResult = await sendPaymentSMS(paymentData, worker);
+
+                    if (smsResult.success) {
+                      message.success("SMS sent to worker successfully!");
+                    } else {
+                      message.warning(
+                        `Payment saved but SMS failed: ${smsResult.message}`
+                      );
+                    }
+                  } catch (smsError) {
+                    console.error("SMS Error:", smsError);
+                    message.warning("Payment saved but SMS sending failed");
+                  } finally {
+                    setSendingSMS(false);
+                  }
+                }
+              }
+
+              setOpen(false);
+              setEditingPayment(null);
+              form.resetFields();
+              setSendSMS(false);
+              setSmsPreview("");
+            } catch (error) {
+              console.error("Payment error:", error);
+              message.error("Failed to save payment");
             }
-
-            setOpen(false);
-            setEditingPayment(null);
-            form.resetFields();
           }}
         >
           <Form.Item
@@ -723,6 +782,105 @@ export default function Payments() {
               showCount
             />
           </Form.Item>
+
+          {/* SMS Notification Section */}
+          {!editingPayment && isSMSConfigured() && (
+            <Card size="small" className="mb-4">
+              <Space direction="vertical" className="w-full">
+                <Checkbox
+                  checked={sendSMS}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setSendSMS(checked);
+
+                    if (checked) {
+                      const workerId = form.getFieldValue("workerId");
+                      const amount = form.getFieldValue("amount");
+                      const date = form.getFieldValue("date");
+
+                      if (workerId && amount) {
+                        const worker = workers.find((w) => w.id === workerId);
+                        const preview = previewPaymentSMS(
+                          {
+                            amount,
+                            date:
+                              date?.format("YYYY-MM-DD") ||
+                              new Date().toISOString(),
+                          },
+                          worker
+                        );
+                        setSmsPreview(preview);
+                      }
+                    } else {
+                      setSmsPreview("");
+                    }
+                  }}
+                >
+                  <Space>
+                    <SendOutlined />
+                    <span className="font-medium">
+                      Send SMS notification to worker
+                    </span>
+                  </Space>
+                </Checkbox>
+
+                {sendSMS && smsPreview && (
+                  <Alert
+                    message="SMS Preview"
+                    description={
+                      <div>
+                        <pre className="whitespace-pre-wrap text-xs bg-gray-50 p-2 rounded mt-2">
+                          {smsPreview}
+                        </pre>
+                        <div className="text-xs text-gray-500 mt-2">
+                          {(() => {
+                            const info = getSMSInfo(smsPreview);
+                            return `${info.characters} characters • ${
+                              info.parts
+                            } SMS part(s) • ₹${info.totalCost.toFixed(2)} cost`;
+                          })()}
+                        </div>
+                      </div>
+                    }
+                    type="info"
+                    showIcon
+                  />
+                )}
+
+                {sendSMS && !smsPreview && (
+                  <Alert
+                    message="Fill worker and amount to preview SMS"
+                    type="warning"
+                    showIcon
+                  />
+                )}
+              </Space>
+            </Card>
+          )}
+
+          {!isSMSConfigured() && !editingPayment && (
+            <Alert
+              message="SMS Not Configured"
+              description={
+                <span>
+                  Add your MSG91 API key in <code>.env</code> file to enable SMS
+                  notifications.
+                  <br />
+                  Get API key from:{" "}
+                  <a
+                    href="https://msg91.com/dashboard"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    msg91.com/dashboard
+                  </a>
+                </span>
+              }
+              type="info"
+              showIcon
+              className="mb-4"
+            />
+          )}
 
           {!editingPayment && (
             <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-700">

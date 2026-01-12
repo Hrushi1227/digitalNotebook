@@ -7,8 +7,7 @@ import {
   onSnapshot,
   updateDoc,
 } from "firebase/firestore";
-import { deleteObject, ref } from "firebase/storage";
-import { db, storage } from "./firebase";
+import { db } from "./firebase";
 
 // -------------- GENERIC FIRESTORE HELPERS -----------------
 
