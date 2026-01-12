@@ -51,7 +51,7 @@ export const sendSMS = async (phoneNumber, message) => {
     }
   } catch (error) {
     console.error("SMS Error:", error);
-    
+
     // In development, return mock success instead of failing
     if (import.meta.env.DEV) {
       console.warn("SMS failed in dev mode - using mock success");
@@ -61,7 +61,7 @@ export const sendSMS = async (phoneNumber, message) => {
         data: { mock: true },
       };
     }
-    
+
     return {
       success: false,
       message: error.message,

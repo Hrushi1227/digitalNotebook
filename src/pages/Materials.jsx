@@ -389,7 +389,11 @@ export default function Materials() {
       >
         <Form
           layout="vertical"
-          initialValues={edit || { date: dayjs(), category: "Other" }}
+          initialValues={
+            edit
+              ? { ...edit, date: edit.date ? dayjs(edit.date) : dayjs() }
+              : { date: dayjs(), category: "Other" }
+          }
           onFinish={async (vals) => {
             try {
               const payload = {
@@ -583,10 +587,12 @@ export default function Materials() {
           paddingBottom: 0,
           maxWidth: window.innerWidth > 768 ? "900px" : "100vw",
         }}
-        bodyStyle={{
-          maxHeight: "80vh",
-          overflowY: "auto",
-          padding: window.innerWidth > 768 ? "24px" : "12px",
+        styles={{
+          body: {
+            maxHeight: "80vh",
+            overflowY: "auto",
+            padding: window.innerWidth > 768 ? "24px" : "12px",
+          },
         }}
         centered={window.innerWidth > 768}
       >
