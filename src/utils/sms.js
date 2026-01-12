@@ -11,7 +11,8 @@
  */
 export const sendSMS = async (phoneNumber, message) => {
   try {
-    // Always use the API endpoint (works with Vercel CLI in dev, or production)
+    // In development, check if API endpoint exists
+    const isDevelopment = import.meta.env.DEV;
     const url = "/api/send-sms";
 
     const response = await fetch(url, {
@@ -24,6 +25,18 @@ export const sendSMS = async (phoneNumber, message) => {
         message: message,
       }),
     });
+
+    // If 404 or 500 in development, use mock success
+    if (!response.ok && isDevelopment) {
+      console.warn("SMS API not available in local dev - using mock success");
+      console.log("Would send SMS to:", phoneNumber);
+      console.log("Message:", message);
+      return {
+        success: true,
+        message: "SMS sent (development mode - not actually sent)",
+        data: { mock: true },
+      };
+    }
 
     const data = await response.json();
 
@@ -38,6 +51,17 @@ export const sendSMS = async (phoneNumber, message) => {
     }
   } catch (error) {
     console.error("SMS Error:", error);
+    
+    // In development, return mock success instead of failing
+    if (import.meta.env.DEV) {
+      console.warn("SMS failed in dev mode - using mock success");
+      return {
+        success: true,
+        message: "SMS sent (development mode - mock)",
+        data: { mock: true },
+      };
+    }
+    
     return {
       success: false,
       message: error.message,
