@@ -23,6 +23,7 @@ export default function App() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publicStatuses, setPublicStatuses] = useState({});
+  const [publicSummary, setPublicSummary] = useState({ received: 0, spent: 0, balance: 0 });
   const [editingContribution, setEditingContribution] = useState(null);
   const [contributionEdit, setContributionEdit] = useState({ amount: "", mode: "UPI", date: today(), remarks: "" });
   const [isAdmin, setIsAdmin] = useState(false);
@@ -53,9 +54,17 @@ export default function App() {
     setPublicStatuses(statuses);
   }, () => setError("Public collection status could not be loaded.")), [wing]);
 
+  useEffect(() => onSnapshot(doc(db, "ganpati_public_summary", wing), (snapshot) => {
+    setPublicSummary(snapshot.exists() ? snapshot.data() : { received: 0, spent: 0, balance: 0 });
+  }, () => setError("Public totals could not be loaded.")), [wing]);
+
   const normalized = entries.map((item) => ({ ...item, type: item.type || "incoming" }));
   const incoming = normalized.filter((item) => item.type === "incoming").reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
   const outgoing = normalized.filter((item) => item.type === "outgoing").reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  useEffect(() => {
+    if (!isAdmin || loading) return;
+    setDoc(doc(db, "ganpati_public_summary", wing), { received: incoming, spent: outgoing, balance: incoming - outgoing, updatedAt: serverTimestamp() }).catch(() => setError("Public totals could not be refreshed."));
+  }, [isAdmin, loading, wing, incoming, outgoing]);
   const ownerTotals = useMemo(() => normalized.reduce((totals, item) => {
     if ((item.type || "incoming") === "incoming" && item.ownerId) totals[item.ownerId] = (totals[item.ownerId] || 0) + (Number(item.amount) || 0);
     return totals;
@@ -175,7 +184,9 @@ export default function App() {
     </header>
     <section className="content">
       <div className="wing-switch">{["A","B"].map((item) => <button key={item} className={wing === item ? "active" : ""} onClick={() => { setWing(item); setForm(emptyForm); }}>Building {item}</button>)}</div>
-      {isAdmin ? <><div className="admin-banner"><span>Admin view · Financial details unlocked</span><button onClick={downloadAuditPdf}>↓ Audit PDF</button></div><div className="money-grid"><div className="money-card received"><span>Received</span><strong>{money.format(incoming)}</strong></div><div className="money-card spent"><span>Spent</span><strong>{money.format(outgoing)}</strong></div><div className="money-card balance"><span>Balance</span><strong>{money.format(incoming - outgoing)}</strong></div></div><div className="view-tabs"><button className={view === "owners" ? "active" : ""} onClick={() => setView("owners")}>Owner register</button><button className={view === "ledger" ? "active" : ""} onClick={() => setView("ledger")}>Expenses</button></div></> : <div className="privacy-note"><span>🔒</span><div><strong>Contribution amounts are private</strong><p>Only collection status is shown publicly.</p></div></div>}
+      {isAdmin ? <div className="admin-banner"><span>Admin view · Financial details unlocked</span><button onClick={downloadAuditPdf}>↓ Audit PDF</button></div> : <div className="privacy-note"><span>🔒</span><div><strong>Personal contributions are private</strong><p>Only combined society totals are public.</p></div></div>}
+      <div className="money-grid public-totals"><div className="money-card received"><span>Received</span><strong>{money.format(isAdmin ? incoming : Number(publicSummary.received) || 0)}</strong></div><div className="money-card spent"><span>Spent</span><strong>{money.format(isAdmin ? outgoing : Number(publicSummary.spent) || 0)}</strong></div><div className="money-card balance"><span>Balance</span><strong>{money.format(isAdmin ? incoming - outgoing : Number(publicSummary.balance) || 0)}</strong></div></div>
+      {isAdmin && <div className="view-tabs"><button className={view === "owners" ? "active" : ""} onClick={() => setView("owners")}>Owner register</button><button className={view === "ledger" ? "active" : ""} onClick={() => setView("ledger")}>Expenses</button></div>}
       <div className="toolbar"><label className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={view === "owners" ? "Search owner or flat" : "Search ledger"}/></label>{isAdmin && <button className="add-button" onClick={() => setShowForm(!showForm)}>{showForm ? "Close" : "+ Entry"}</button>}</div>
       {isAdmin && showForm && <form className="entry-form" onSubmit={saveTransaction}>
         <div className="type-switch"><button type="button" className={form.type === "incoming" ? "active incoming" : ""} onClick={() => changeType("incoming")}>↓ Money in</button><button type="button" className={form.type === "outgoing" ? "active outgoing" : ""} onClick={() => changeType("outgoing")}>↑ Expense</button></div>
