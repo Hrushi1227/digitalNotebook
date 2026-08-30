@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
-import { addDoc, collection, doc, onSnapshot, serverTimestamp, updateDoc } from "firebase/firestore";
-import { db } from "./firebase";
+import { addDoc, collection, doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
+import { auth, db } from "./firebase";
 import { ownersFor } from "./data/ganpatiOwners";
-import { PASSCODE, PASSCODE_SESSION_KEY } from "./config";
 
 const COLLECTIONS = { A: "ganpati_collection_a", B: "ganpati_collection_b" };
+const ADMIN_EMAIL = "breezasociety2026@gmail.com";
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -17,23 +18,35 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [publicStatuses, setPublicStatuses] = useState({});
   const [editingContribution, setEditingContribution] = useState(null);
   const [contributionEdit, setContributionEdit] = useState({ amount: "", mode: "UPI", date: today(), remarks: "" });
-  const [isAdmin, setIsAdmin] = useState(() => sessionStorage.getItem(PASSCODE_SESSION_KEY) === "true");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [showPrivacyInfo, setShowPrivacyInfo] = useState(false);
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
   const emptyForm = { type: "incoming", ownerId: "", anonymous: false, anonymousName: "", purpose: "", amount: "", mode: "UPI", date: today(), remarks: "" };
   const [form, setForm] = useState(emptyForm);
   const owners = useMemo(() => ownersFor(wing), [wing]);
 
   useEffect(() => {
+    if (!isAdmin) { setEntries([]); setLoading(false); return undefined; }
     setLoading(true); setError("");
     return onSnapshot(collection(db, COLLECTIONS[wing]), (snapshot) => {
       setEntries(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
       setLoading(false);
     }, () => { setError("Could not load the Ganpati ledger. Please check your connection."); setLoading(false); });
-  }, [wing]);
+  }, [wing, isAdmin]);
+
+  useEffect(() => onAuthStateChanged(auth, (user) => setIsAdmin(Boolean(user))), []);
+
+  useEffect(() => onSnapshot(collection(db, `ganpati_public_status_${wing.toLowerCase()}`), (snapshot) => {
+    const statuses = {};
+    snapshot.docs.forEach((item) => { const data = item.data(); if (data.ownerId) statuses[data.ownerId] = data.received === true; });
+    setPublicStatuses(statuses);
+  }, () => setError("Public collection status could not be loaded.")), [wing]);
 
   const normalized = entries.map((item) => ({ ...item, type: item.type || "incoming" }));
   const incoming = normalized.filter((item) => item.type === "incoming").reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
@@ -47,17 +60,18 @@ export default function App() {
   const visibleLedger = normalized.sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).filter((item) => `${item.name || ""} ${item.flat || ""} ${item.purpose || ""} ${item.remarks || ""}`.toLowerCase().includes(q));
 
   function changeType(type) { setForm({ ...emptyForm, type }); }
-  function adminLogin(event) {
+  async function adminLogin(event) {
     event.preventDefault();
-    if (password !== PASSCODE) { setLoginError("Incorrect password."); return; }
-    sessionStorage.setItem(PASSCODE_SESSION_KEY, "true"); setIsAdmin(true); setShowLogin(false); setPassword(""); setLoginError("");
+    setLoginError("");
+    try { await signInWithEmailAndPassword(auth, ADMIN_EMAIL, password); setShowLogin(false); setPassword(""); }
+    catch { setLoginError("Incorrect password."); }
   }
-  function adminLogout() { sessionStorage.removeItem(PASSCODE_SESSION_KEY); setIsAdmin(false); setView("owners"); setShowForm(false); setEditingContribution(null); }
+  async function adminLogout() { await signOut(auth); setView("owners"); setShowForm(false); setEditingContribution(null); }
   function startContributionEdit(owner) {
     const existing = normalized.filter((item) => item.type === "incoming" && item.ownerId === owner.id);
     const latest = existing[0];
     setEditingContribution({ owner, existing: latest || null });
-    setContributionEdit({ amount: ownerTotals[owner.id] || "", mode: latest?.mode || "UPI", date: latest?.date || today(), remarks: latest?.remarks || "" });
+    setContributionEdit({ amount: isAdmin ? (ownerTotals[owner.id] || "") : "", mode: latest?.mode || "UPI", date: latest?.date || today(), remarks: latest?.remarks || "" });
   }
   async function saveContributionEdit(event) {
     event.preventDefault();
@@ -67,6 +81,7 @@ export default function App() {
       const payload = { type: "incoming", ownerId: editingContribution.owner.id, name: editingContribution.owner.name, flat: editingContribution.owner.flat, amount: Number(contributionEdit.amount), mode: contributionEdit.mode, date: contributionEdit.date, remarks: contributionEdit.remarks.trim(), wing, updatedAt: serverTimestamp() };
       if (editingContribution.existing) await updateDoc(doc(db, COLLECTIONS[wing], editingContribution.existing.id), payload);
       else await addDoc(collection(db, COLLECTIONS[wing]), { ...payload, createdAt: serverTimestamp() });
+      await setDoc(doc(db, `ganpati_public_status_${wing.toLowerCase()}`, encodeURIComponent(editingContribution.owner.id)), { ownerId: editingContribution.owner.id, received: Number(contributionEdit.amount) > 0, updatedAt: serverTimestamp() });
       setEditingContribution(null);
     } catch { setError("Contribution details could not be updated. Please try again."); }
     finally { setSaving(false); }
@@ -83,13 +98,14 @@ export default function App() {
         ...(form.type === "incoming" ? { ownerId: form.anonymous ? null : owner.id, name: form.anonymous ? (form.anonymousName.trim() || "Anonymous") : owner.name, flat: form.anonymous ? "Anonymous" : owner.flat, anonymous: form.anonymous } : { purpose: form.purpose.trim() }),
         createdAt: serverTimestamp(),
       });
+      if (form.type === "incoming" && !form.anonymous && owner) await setDoc(doc(db, `ganpati_public_status_${wing.toLowerCase()}`, encodeURIComponent(owner.id)), { ownerId: owner.id, received: true, updatedAt: serverTimestamp() });
       setForm(emptyForm); setShowForm(false); setView("ledger");
     } catch { setError("Transaction could not be saved. Please try again."); }
     finally { setSaving(false); }
   }
 
   return <main className="app-shell">
-    <header className="hero"><button className="admin-access" onClick={() => isAdmin ? adminLogout() : setShowLogin(true)}>{isAdmin ? "Exit admin" : "Admin"}</button><div className="hero-glow"/><div className="ganpati-mark">ॐ</div><p className="eyebrow">Breeza Society</p><h1>Ganpati Utsav 2026</h1><p className="blessing">गणपती बाप्पा मोरया</p><p className="creator-credit">Created by Rushikesh Ghatol · A-1302</p></header>
+    <header className="hero"><button className="admin-access" onClick={() => isAdmin ? adminLogout() : setShowLogin(true)}>{isAdmin ? "Exit admin" : "🔒 Admin"}</button><div className="hero-glow"/><div className="ganpati-mark">ॐ</div><p className="eyebrow">Breeza Society</p><h1>Ganpati Utsav 2026</h1><p className="blessing">गणपती बाप्पा मोरया</p><p className="creator-credit">Created by Rushikesh Ghatol · A-1302</p></header>
     <section className="content">
       <div className="wing-switch">{["A","B"].map((item) => <button key={item} className={wing === item ? "active" : ""} onClick={() => { setWing(item); setForm(emptyForm); }}>Building {item}</button>)}</div>
       {isAdmin ? <><div className="admin-banner">Admin view · Financial details unlocked</div><div className="money-grid"><div className="money-card received"><span>Received</span><strong>{money.format(incoming)}</strong></div><div className="money-card spent"><span>Spent</span><strong>{money.format(outgoing)}</strong></div><div className="money-card balance"><span>Balance</span><strong>{money.format(incoming - outgoing)}</strong></div></div><div className="view-tabs"><button className={view === "owners" ? "active" : ""} onClick={() => setView("owners")}>Owner register</button><button className={view === "ledger" ? "active" : ""} onClick={() => setView("ledger")}>Income & expenses</button></div></> : <div className="privacy-note"><span>🔒</span><div><strong>Contribution amounts are private</strong><p>Only collection status is shown publicly.</p></div></div>}
@@ -106,9 +122,10 @@ export default function App() {
       </form>}
       {error && <p className="error-message">{error}</p>}
       <div className="list-heading"><h2>{view === "owners" ? `Building ${wing} owners` : "Transaction ledger"}</h2><span>{view === "owners" ? visibleOwners.length : visibleLedger.length}</span></div>
-      {loading ? <div className="empty-state">Loading Ganpati register…</div> : view === "owners" || !isAdmin ? <div className="contribution-list">{visibleOwners.map((owner) => <article className="contribution" key={owner.id}><div className="avatar">{owner.flat.split(" ")[0]}</div><div className="person"><strong>{owner.name}</strong><span>Flat {owner.flat}</span></div><div className="amount">{isAdmin && <strong>{ownerTotals[owner.id] ? money.format(ownerTotals[owner.id]) : "—"}</strong>}<small className={ownerTotals[owner.id] ? "status-received" : "status-waiting"}>{ownerTotals[owner.id] ? "Received" : "Yet to receive"}</small>{isAdmin && <button className="edit-owner" onClick={() => startContributionEdit(owner)}>{ownerTotals[owner.id] ? "Edit contribution" : "Add contribution"}</button>}</div></article>)}</div> : visibleLedger.length ? <div className="contribution-list">{visibleLedger.map((item) => <article className="contribution" key={item.id}><div className={`avatar ${item.type}`}>{item.type === "outgoing" ? "↑" : "↓"}</div><div className="person"><strong>{item.type === "outgoing" ? item.purpose : item.name || "Contribution"}</strong><span>{item.type === "outgoing" ? "Expense" : `Flat ${item.flat || "—"}`} · {item.mode || "Mode not set"} · {item.date || "No date"}</span>{item.remarks && <em>{item.remarks}</em>}</div><div className={`amount ${item.type}`}><strong>{item.type === "outgoing" ? "−" : "+"}{money.format(Number(item.amount) || 0)}</strong></div></article>)}</div> : <div className="empty-state"><div>🙏</div><strong>No transactions yet</strong><p>Add an incoming contribution or outgoing expense.</p></div>}
+      {loading ? <div className="empty-state">Loading Ganpati register…</div> : view === "owners" || !isAdmin ? <div className="contribution-list">{visibleOwners.map((owner) => { const received = isAdmin ? Boolean(ownerTotals[owner.id]) : Boolean(publicStatuses[owner.id]); return <article className="contribution" key={owner.id}><div className="avatar">{owner.flat.split(" ")[0]}</div><div className="person"><strong>{owner.name}</strong><span>Flat {owner.flat}</span></div><div className="amount">{isAdmin ? <strong>{ownerTotals[owner.id] ? money.format(ownerTotals[owner.id]) : "—"}</strong> : <button className="private-lock" onClick={() => setShowPrivacyInfo(true)} aria-label="Private amount">🔒</button>}<small className={received ? "status-received" : "status-waiting"}>{received ? "Received" : "Yet to receive"}</small><button className="edit-owner" onClick={() => startContributionEdit(owner)}>{isAdmin ? (ownerTotals[owner.id] ? "Edit contribution" : "Add contribution") : "Give contribution"}</button></div></article>})}</div> : visibleLedger.length ? <div className="contribution-list">{visibleLedger.map((item) => <article className="contribution" key={item.id}><div className={`avatar ${item.type}`}>{item.type === "outgoing" ? "↑" : "↓"}</div><div className="person"><strong>{item.type === "outgoing" ? item.purpose : item.name || "Contribution"}</strong><span>{item.type === "outgoing" ? "Expense" : `Flat ${item.flat || "—"}`} · {item.mode || "Mode not set"} · {item.date || "No date"}</span>{item.remarks && <em>{item.remarks}</em>}</div><div className={`amount ${item.type}`}><strong>{item.type === "outgoing" ? "−" : "+"}{money.format(Number(item.amount) || 0)}</strong></div></article>)}</div> : <div className="empty-state"><div>🙏</div><strong>No transactions yet</strong><p>Add an incoming contribution or outgoing expense.</p></div>}
     </section><footer><span>Ganpati-only account · Breeza Society</span><strong>Created by Rushikesh Ghatol · A-1302</strong></footer>
-    {showLogin && <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setShowLogin(false)}><form className="login-modal" onSubmit={adminLogin}><button type="button" className="modal-close" onClick={() => setShowLogin(false)}>×</button><div className="lock-icon">🔐</div><h2>Admin access</h2><p>Enter the password to view contributions and expenses.</p><label>Password<input autoFocus type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter password"/></label>{loginError && <span className="login-error">{loginError}</span>}<button className="unlock-button">Unlock financial details</button></form></div>}
-    {editingContribution && <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setEditingContribution(null)}><form className="login-modal contribution-modal" onSubmit={saveContributionEdit}><button type="button" className="modal-close" onClick={() => setEditingContribution(null)}>×</button><p className="modal-kicker">Building {wing} · Flat {editingContribution.owner.flat}</p><h2>Edit contribution</h2><p className="frozen-owner">{editingContribution.owner.name}</p><small>Owner details are frozen. Only contribution information can be changed.</small><label>Amount<input autoFocus required type="number" min="0" inputMode="numeric" value={contributionEdit.amount} onChange={(e) => setContributionEdit({ ...contributionEdit, amount: e.target.value })} placeholder="₹ 0"/></label><div className="form-row"><label>Payment mode<select value={contributionEdit.mode} onChange={(e) => setContributionEdit({ ...contributionEdit, mode: e.target.value })}><option>UPI</option><option>Cash</option><option>Bank transfer</option><option>Other</option></select></label><label>Date<input required type="date" value={contributionEdit.date} onChange={(e) => setContributionEdit({ ...contributionEdit, date: e.target.value })}/></label></div><label>Remarks<input value={contributionEdit.remarks} onChange={(e) => setContributionEdit({ ...contributionEdit, remarks: e.target.value })} placeholder="Optional note"/></label><button className="unlock-button" disabled={saving}>{saving ? "Saving…" : "Save contribution"}</button></form></div>}
+    {showLogin && <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setShowLogin(false)}><form className="login-modal" onSubmit={adminLogin}><button type="button" className="modal-close" onClick={() => setShowLogin(false)}>×</button><div className="lock-icon">🔐</div><h2>Admin access</h2><p>Enter the administrator password to view contributions and expenses.</p><label>Password<div className="password-field"><input autoFocus required type={showPassword ? "text" : "password"} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter admin password"/><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? "🙈" : "👁"}</button></div></label>{loginError && <span className="login-error">{loginError}</span>}<button className="unlock-button">Secure sign in</button></form></div>}
+    {editingContribution && <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setEditingContribution(null)}><form className="login-modal contribution-modal" onSubmit={saveContributionEdit}><button type="button" className="modal-close" onClick={() => setEditingContribution(null)}>×</button><p className="modal-kicker">Building {wing} · Flat {editingContribution.owner.flat}</p><h2>{isAdmin ? "Edit contribution" : "Give contribution"}</h2><p className="frozen-owner">{editingContribution.owner.name}</p><small>{isAdmin ? "Owner details are frozen. Only contribution information can be changed." : "Your amount is private and can only be viewed by the administrator."}</small><label>Amount<input autoFocus required type="number" min="1" inputMode="numeric" value={contributionEdit.amount} onChange={(e) => setContributionEdit({ ...contributionEdit, amount: e.target.value })} placeholder="₹ 0"/></label><div className="form-row"><label>Payment mode<select value={contributionEdit.mode} onChange={(e) => setContributionEdit({ ...contributionEdit, mode: e.target.value })}><option>UPI</option><option>Cash</option><option>Bank transfer</option><option>Other</option></select></label><label>Date<input required type="date" value={contributionEdit.date} onChange={(e) => setContributionEdit({ ...contributionEdit, date: e.target.value })}/></label></div><label>Remarks<input value={contributionEdit.remarks} onChange={(e) => setContributionEdit({ ...contributionEdit, remarks: e.target.value })} placeholder="Optional note"/></label><button className="unlock-button" disabled={saving}>{saving ? "Saving…" : "Submit privately"}</button></form></div>}
+    {showPrivacyInfo && <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setShowPrivacyInfo(false)}><div className="login-modal privacy-modal"><button className="modal-close" onClick={() => setShowPrivacyInfo(false)}>×</button><div className="lock-icon">🔒</div><h2>Private contribution</h2><p>Contribution amounts and expense details can only be viewed by the Ganpati administrator.</p><button className="unlock-button" onClick={() => { setShowPrivacyInfo(false); setShowLogin(true); }}>Admin sign in</button></div></div>}
   </main>;
 }

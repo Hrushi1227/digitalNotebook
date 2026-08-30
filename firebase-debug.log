@@ -1,0 +1,116 @@
+[debug] [2026-08-30T15:44:38.744Z] ----------------------------------------------------------------------
+[debug] [2026-08-30T15:44:38.747Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\rushi\AppData\Local\npm-cache\_npx\7750544ccf494d8b\node_modules\firebase-tools\lib\bin\firebase.js projects:list
+[debug] [2026-08-30T15:44:38.747Z] CLI Version:   15.28.2
+[debug] [2026-08-30T15:44:38.747Z] Platform:      win32
+[debug] [2026-08-30T15:44:38.747Z] Node Version:  v22.20.0
+[debug] [2026-08-30T15:44:38.748Z] Detected Agent: codex_cli
+[debug] [2026-08-30T15:44:38.748Z] Time:          Sun Aug 30 2026 21:14:38 GMT+0530 (India Standard Time)
+[debug] [2026-08-30T15:44:38.748Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-30T15:44:39.020Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-30T15:44:39.020Z] > authorizing via signed-in user (rushi.ghatol@gmail.com)
+[debug] [2026-08-30T15:44:39.045Z] Checked if tokens are valid: true, expires at: 1788108235846
+[debug] [2026-08-30T15:44:39.045Z] Checked if tokens are valid: true, expires at: 1788108235846
+[debug] [2026-08-30T15:44:39.047Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2026-08-30T15:44:39.785Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2026-08-30T15:44:39.785Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] ┌──────────────────────┬─────────────────────┬────────────────┬──────────────────────┐
+│ Project Display Name │ Project ID          │ Project Number │ Resource Location ID │
+├──────────────────────┼─────────────────────┼────────────────┼──────────────────────┤
+│ restaurentApp        │ restaurentapp-adc98 │ 796551233632   │ [Not specified]      │
+└──────────────────────┴─────────────────────┴────────────────┴──────────────────────┘
+[info] 
+[info] 1 project(s) total.
+[debug] [2026-08-30T15:44:43.159Z] ----------------------------------------------------------------------
+[debug] [2026-08-30T15:44:43.163Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\rushi\AppData\Local\npm-cache\_npx\7750544ccf494d8b\node_modules\firebase-tools\lib\bin\firebase.js use digitalcalculator-d7027
+[debug] [2026-08-30T15:44:43.164Z] CLI Version:   15.28.2
+[debug] [2026-08-30T15:44:43.164Z] Platform:      win32
+[debug] [2026-08-30T15:44:43.164Z] Node Version:  v22.20.0
+[debug] [2026-08-30T15:44:43.165Z] Detected Agent: codex_cli
+[debug] [2026-08-30T15:44:43.165Z] Time:          Sun Aug 30 2026 21:14:43 GMT+0530 (India Standard Time)
+[debug] [2026-08-30T15:44:43.165Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-30T15:44:43.429Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-30T15:44:43.429Z] > authorizing via signed-in user (rushi.ghatol@gmail.com)
+[debug] [2026-08-30T15:44:43.439Z] Checked if tokens are valid: true, expires at: 1788108235846
+[debug] [2026-08-30T15:44:43.440Z] Checked if tokens are valid: true, expires at: 1788108235846
+[debug] [2026-08-30T15:44:43.441Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/digitalcalculator-d7027/services/cloudresourcemanager.googleapis.com [none]
+[debug] [2026-08-30T15:44:43.442Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/digitalcalculator-d7027/services/cloudresourcemanager.googleapis.com  x-goog-user-project=digitalcalculator-d7027
+[debug] [2026-08-30T15:44:52.334Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/digitalcalculator-d7027/services/cloudresourcemanager.googleapis.com 403
+[debug] [2026-08-30T15:44:52.335Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/digitalcalculator-d7027/services/cloudresourcemanager.googleapis.com [omitted]
+[debug] [2026-08-30T15:44:52.335Z] Unable to check that https://cloudresourcemanager.googleapis.com is enabled on digitalcalculator-d7027. Calls to it will fail if it is not enabled
+[debug] [2026-08-30T15:44:52.336Z] Checked if tokens are valid: true, expires at: 1788108235846
+[debug] [2026-08-30T15:44:52.336Z] Checked if tokens are valid: true, expires at: 1788108235846
+[debug] [2026-08-30T15:44:52.336Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/digitalcalculator-d7027 [none]
+[debug] [2026-08-30T15:44:53.831Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/digitalcalculator-d7027 403
+[debug] [2026-08-30T15:44:53.831Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/digitalcalculator-d7027 {"error":{"code":403,"message":"The caller does not have permission","status":"PERMISSION_DENIED"}}
+[error] 
+[error] Error: Invalid project selection, please verify project digitalcalculator-d7027 exists and you have access.
+[debug] [2026-08-30T15:44:57.036Z] ----------------------------------------------------------------------
+[debug] [2026-08-30T15:44:57.038Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\rushi\AppData\Local\npm-cache\_npx\7750544ccf494d8b\node_modules\firebase-tools\lib\bin\firebase.js deploy --only firestore:rules
+[debug] [2026-08-30T15:44:57.039Z] CLI Version:   15.28.2
+[debug] [2026-08-30T15:44:57.039Z] Platform:      win32
+[debug] [2026-08-30T15:44:57.039Z] Node Version:  v22.20.0
+[debug] [2026-08-30T15:44:57.040Z] Detected Agent: codex_cli
+[debug] [2026-08-30T15:44:57.040Z] Time:          Sun Aug 30 2026 21:14:57 GMT+0530 (India Standard Time)
+[debug] [2026-08-30T15:44:57.040Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-30T15:45:27.452Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-30T15:45:27.452Z] > authorizing via signed-in user (rushi.ghatol@gmail.com)
+[error] 
+[error] Error: No currently active project.
+To run this command, you need to specify a project. You have two options:
+- Run this command with --project <alias_or_project_id>.
+- Set an active project by running firebase use --add, then rerun this command.
+To list all the Firebase projects to which you have access, run firebase projects:list.
+To learn about active projects for the CLI, visit https://firebase.google.com/docs/cli#project_aliases
+
+
+[debug] [2026-08-30T15:52:43.454Z] ----------------------------------------------------------------------
+[debug] [2026-08-30T15:52:43.457Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\rushi\AppData\Local\npm-cache\_npx\7750544ccf494d8b\node_modules\firebase-tools\lib\bin\firebase.js projects:list
+[debug] [2026-08-30T15:52:43.459Z] CLI Version:   15.28.2
+[debug] [2026-08-30T15:52:43.459Z] Platform:      win32
+[debug] [2026-08-30T15:52:43.459Z] Node Version:  v22.20.0
+[debug] [2026-08-30T15:52:43.460Z] Detected Agent: codex_cli
+[debug] [2026-08-30T15:52:43.460Z] Time:          Sun Aug 30 2026 21:22:43 GMT+0530 (India Standard Time)
+[debug] [2026-08-30T15:52:43.460Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-30T15:52:43.656Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-30T15:52:43.656Z] > authorizing via signed-in user (rushi.ghatol@gmail.com)
+[debug] [2026-08-30T15:52:43.686Z] Checked if tokens are valid: true, expires at: 1788108235846
+[debug] [2026-08-30T15:52:43.686Z] Checked if tokens are valid: true, expires at: 1788108235846
+[debug] [2026-08-30T15:52:43.688Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects pageSize=1000
+[debug] [2026-08-30T15:52:44.594Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects 200
+[debug] [2026-08-30T15:52:44.594Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects [omitted]
+[info] ┌──────────────────────┬─────────────────────────┬────────────────┬──────────────────────┐
+│ Project Display Name │ Project ID              │ Project Number │ Resource Location ID │
+├──────────────────────┼─────────────────────────┼────────────────┼──────────────────────┤
+│ digitalCalculator    │ digitalcalculator-d7027 │ 1032635974968  │ [Not specified]      │
+├──────────────────────┼─────────────────────────┼────────────────┼──────────────────────┤
+│ restaurentApp        │ restaurentapp-adc98     │ 796551233632   │ [Not specified]      │
+└──────────────────────┴─────────────────────────┴────────────────┴──────────────────────┘
+[info] 
+[info] 2 project(s) total.
+[debug] [2026-08-30T15:52:47.271Z] ----------------------------------------------------------------------
+[debug] [2026-08-30T15:52:47.275Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\rushi\AppData\Local\npm-cache\_npx\7750544ccf494d8b\node_modules\firebase-tools\lib\bin\firebase.js use digitalcalculator-d7027
+[debug] [2026-08-30T15:52:47.276Z] CLI Version:   15.28.2
+[debug] [2026-08-30T15:52:47.276Z] Platform:      win32
+[debug] [2026-08-30T15:52:47.277Z] Node Version:  v22.20.0
+[debug] [2026-08-30T15:52:47.277Z] Detected Agent: codex_cli
+[debug] [2026-08-30T15:52:47.277Z] Time:          Sun Aug 30 2026 21:22:47 GMT+0530 (India Standard Time)
+[debug] [2026-08-30T15:52:47.278Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-08-30T15:52:47.478Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-08-30T15:52:47.478Z] > authorizing via signed-in user (rushi.ghatol@gmail.com)
+[debug] [2026-08-30T15:52:47.489Z] Checked if tokens are valid: true, expires at: 1788108235846
+[debug] [2026-08-30T15:52:47.489Z] Checked if tokens are valid: true, expires at: 1788108235846
+[debug] [2026-08-30T15:52:47.490Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/digitalcalculator-d7027/services/cloudresourcemanager.googleapis.com [none]
+[debug] [2026-08-30T15:52:47.491Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/digitalcalculator-d7027/services/cloudresourcemanager.googleapis.com  x-goog-user-project=digitalcalculator-d7027
+[debug] [2026-08-30T15:52:49.301Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/digitalcalculator-d7027/services/cloudresourcemanager.googleapis.com 200
+[debug] [2026-08-30T15:52:49.301Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/digitalcalculator-d7027/services/cloudresourcemanager.googleapis.com [omitted]
+[debug] [2026-08-30T15:52:49.310Z] Checked if tokens are valid: true, expires at: 1788108235846
+[debug] [2026-08-30T15:52:49.310Z] Checked if tokens are valid: true, expires at: 1788108235846
+[debug] [2026-08-30T15:52:49.310Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/digitalcalculator-d7027 [none]
+[debug] [2026-08-30T15:52:50.741Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/digitalcalculator-d7027 200
+[debug] [2026-08-30T15:52:50.742Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/digitalcalculator-d7027 {"projectNumber":"1032635974968","projectId":"digitalcalculator-d7027","lifecycleState":"ACTIVE","name":"digitalCalculator","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-12-11T22:01:02.033395Z"}
+[info] Now using project digitalcalculator-d7027
