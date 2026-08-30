@@ -1,273 +1,82 @@
-import {
-  CloudOutlined,
-  DashboardOutlined,
-  LogoutOutlined,
-  MenuOutlined,
-  ShoppingCartOutlined,
-  TeamOutlined,
-  WalletOutlined,
-} from "@ant-design/icons";
-import { Button, Layout, Menu } from "antd";
-import { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import {
-  Link,
-  Route,
-  Routes,
-  useLocation,
-  useNavigate,
-} from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { addDoc, collection, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { db } from "./firebase";
+import { ownersFor } from "./data/ganpatiOwners";
 
-import FloatingChat from "./components/common/FloatingChat";
-import GlobalSearch from "./components/common/GlobalSearch";
-import Dashboard from "./pages/Dashboard";
-import Documents from "./pages/Documents";
-import Login from "./pages/Login";
-import Materials from "./pages/Materials";
-import Messages from "./pages/Messages";
-import Payments from "./pages/Payments";
-import StorageManager from "./pages/StorageManager";
-import UniversalLogin from "./pages/UniversalLogin";
-import WorkerDetails from "./pages/WorkerDetails";
-import WorkerPortal from "./pages/WorkerPortal";
-import Workers from "./pages/Workers";
-import {
-  logout,
-  selectIsAuthenticated,
-  selectIsSuperAdmin,
-  selectUserRole,
-} from "./store/authSlice";
-import { initializeSession } from "./utils/security";
-
-const { Header, Sider, Content, Footer } = Layout;
-
-const items = [
-  {
-    key: "/",
-    icon: <DashboardOutlined />,
-    label: <Link to="/">Dashboard</Link>,
-  },
-  {
-    key: "/workers",
-    icon: <TeamOutlined />,
-    label: <Link to="/workers">Workers</Link>,
-  },
-  {
-    key: "/materials",
-    icon: <ShoppingCartOutlined />,
-    label: <Link to="/materials">Materials</Link>,
-  },
-  {
-    key: "/documents",
-    icon: <ShoppingCartOutlined />,
-    label: <Link to="/documents">Documents</Link>,
-  },
-  {
-    key: "/payments",
-    icon: <WalletOutlined />,
-    label: <Link to="/payments">Payments</Link>,
-  },
-  {
-    key: "/storage",
-    icon: <CloudOutlined />,
-    label: <Link to="/storage">Storage</Link>,
-  },
-];
+const COLLECTIONS = { A: "ganpati_collection_a", B: "ganpati_collection_b" };
+const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
+const today = () => new Date().toISOString().slice(0, 10);
 
 export default function App() {
-  const location = useLocation();
-  const navigate = useNavigate();
-  const dispatch = useDispatch();
-  const isAuthenticated = useSelector(selectIsAuthenticated);
-  const userRole = useSelector(selectUserRole);
-  const isSuperAdmin = useSelector(selectIsSuperAdmin);
-  const [collapsed, setCollapsed] = useState(false);
+  const [wing, setWing] = useState("A");
+  const [view, setView] = useState("owners");
+  const [entries, setEntries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const [showForm, setShowForm] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const emptyForm = { type: "incoming", ownerId: "", anonymous: false, anonymousName: "", purpose: "", amount: "", mode: "UPI", date: today(), remarks: "" };
+  const [form, setForm] = useState(emptyForm);
+  const owners = useMemo(() => ownersFor(wing), [wing]);
 
   useEffect(() => {
-    initializeSession();
-  }, []);
+    setLoading(true); setError("");
+    return onSnapshot(collection(db, COLLECTIONS[wing]), (snapshot) => {
+      setEntries(snapshot.docs.map((item) => ({ id: item.id, ...item.data() })));
+      setLoading(false);
+    }, () => { setError("Could not load the Ganpati ledger. Please check your connection."); setLoading(false); });
+  }, [wing]);
 
-  const handleLogout = () => {
-    dispatch(logout());
-    navigate("/");
-  };
+  const normalized = entries.map((item) => ({ ...item, type: item.type || "incoming" }));
+  const incoming = normalized.filter((item) => item.type === "incoming").reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const outgoing = normalized.filter((item) => item.type === "outgoing").reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const ownerTotals = useMemo(() => normalized.reduce((totals, item) => {
+    if ((item.type || "incoming") === "incoming" && item.ownerId) totals[item.ownerId] = (totals[item.ownerId] || 0) + (Number(item.amount) || 0);
+    return totals;
+  }, {}), [entries]);
+  const q = search.trim().toLowerCase();
+  const visibleOwners = owners.filter((owner) => `${owner.flat} ${owner.name}`.toLowerCase().includes(q));
+  const visibleLedger = normalized.sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).filter((item) => `${item.name || ""} ${item.flat || ""} ${item.purpose || ""} ${item.remarks || ""}`.toLowerCase().includes(q));
 
-  // Show login screen
-  if (!isAuthenticated) {
-    return (
-      <Routes>
-        <Route path="/" element={<UniversalLogin />} />
-        <Route path="/login" element={<UniversalLogin />} />
-        <Route path="/admin-login" element={<Login />} />
-        <Route path="*" element={<UniversalLogin />} />
-      </Routes>
-    );
+  function changeType(type) { setForm({ ...emptyForm, type }); }
+  async function saveTransaction(event) {
+    event.preventDefault(); setError("");
+    const owner = owners.find((item) => item.id === form.ownerId);
+    if (form.type === "incoming" && !form.anonymous && !owner) return setError("Please select an owner or choose Anonymous.");
+    if (form.type === "outgoing" && !form.purpose.trim()) return setError("Please enter the expense purpose.");
+    setSaving(true);
+    try {
+      await addDoc(collection(db, COLLECTIONS[wing]), {
+        type: form.type, amount: Number(form.amount), mode: form.mode, date: form.date, remarks: form.remarks.trim(), wing,
+        ...(form.type === "incoming" ? { ownerId: form.anonymous ? null : owner.id, name: form.anonymous ? (form.anonymousName.trim() || "Anonymous") : owner.name, flat: form.anonymous ? "Anonymous" : owner.flat, anonymous: form.anonymous } : { purpose: form.purpose.trim() }),
+        createdAt: serverTimestamp(),
+      });
+      setForm(emptyForm); setShowForm(false); setView("ledger");
+    } catch { setError("Transaction could not be saved. Please try again."); }
+    finally { setSaving(false); }
   }
 
-  // Show worker portal
-  if (userRole === "worker") {
-    return <WorkerPortal />;
-  }
-
-  // Superadmin: show all tabs, all routes
-  if (isSuperAdmin) {
-    return (
-      <Layout className="min-h-screen">
-        <Sider
-          breakpoint="lg"
-          collapsedWidth={0}
-          width={220}
-          collapsible
-          collapsed={collapsed}
-          onCollapse={(val) => setCollapsed(val)}
-          trigger={null}
-        >
-          <div className="text-white text-lg font-semibold px-4 py-3">
-            Renovation
-          </div>
-          <Menu
-            theme="dark"
-            mode="inline"
-            selectedKeys={[location.pathname]}
-            items={items}
-            onClick={() => {
-              try {
-                if (typeof window !== "undefined" && window.innerWidth < 992) {
-                  setCollapsed(true);
-                }
-              } catch (e) {}
-            }}
-          />
-        </Sider>
-        <Layout>
-          <Header className="bg-white shadow-sm px-2 sm:px-6 flex items-center justify-between">
-            <div className="flex items-center">
-              <div className="lg:hidden mr-2">
-                <Button
-                  type="text"
-                  onClick={() => setCollapsed(!collapsed)}
-                  icon={<MenuOutlined />}
-                />
-              </div>
-              <div className="text-base sm:text-xl font-semibold">
-                Renovation Tracker
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <GlobalSearch />
-              <Button
-                type="text"
-                danger
-                onClick={handleLogout}
-                icon={<LogoutOutlined />}
-                className="hidden sm:inline-flex"
-              >
-                Logout
-              </Button>
-              <Button
-                type="text"
-                danger
-                onClick={handleLogout}
-                icon={<LogoutOutlined />}
-                className="sm:hidden"
-              />
-            </div>
-          </Header>
-          <Content className="p-2 sm:p-4 md:p-6 bg-gray-50 min-h-screen">
-            <div className="w-full max-w-7xl mx-auto">
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/workers" element={<Workers />} />
-                <Route path="/workers/:id" element={<WorkerDetails />} />
-                <Route path="/materials" element={<Materials />} />
-                <Route path="/documents" element={<Documents />} />
-                <Route path="/payments" element={<Payments />} />
-                <Route path="/storage" element={<StorageManager />} />
-                <Route path="/messages" element={<Messages />} />
-              </Routes>
-            </div>
-          </Content>
-          <Footer className="text-center text-slate-400">
-            © {new Date().getFullYear()} Breeza
-          </Footer>
-        </Layout>
-        <FloatingChat />
-      </Layout>
-    );
-  }
-
-  // Default: admin (legacy)
-  return (
-    <Layout className="min-h-screen">
-      <Sider
-        breakpoint="lg"
-        collapsedWidth={0}
-        width={220}
-        collapsible
-        collapsed={collapsed}
-        onCollapse={(val) => setCollapsed(val)}
-        trigger={null}
-      >
-        <div className="text-white text-lg font-semibold px-4 py-3">
-          Renovation
-        </div>
-        <Menu
-          theme="dark"
-          mode="inline"
-          selectedKeys={[location.pathname]}
-          items={items}
-          onClick={() => {
-            try {
-              if (typeof window !== "undefined" && window.innerWidth < 992) {
-                setCollapsed(true);
-              }
-            } catch (e) {}
-          }}
-        />
-      </Sider>
-      <Layout>
-        <Header className="bg-white shadow-sm px-6 flex items-center justify-between">
-          <div className="flex items-center">
-            <div className="lg:hidden mr-3">
-              <Button
-                type="text"
-                onClick={() => setCollapsed(!collapsed)}
-                icon={<MenuOutlined />}
-              />
-            </div>
-            <div className="text-xl font-semibold">Home Renovation Tracker</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <GlobalSearch />
-            <Button
-              type="text"
-              danger
-              onClick={handleLogout}
-              icon={<LogoutOutlined />}
-            >
-              Logout
-            </Button>
-          </div>
-        </Header>
-        <Content className="p-6 bg-gray-50 min-h-screen">
-          <div className="max-w-7xl mx-auto">
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/workers" element={<Workers />} />
-              <Route path="/workers/:id" element={<WorkerDetails />} />
-              <Route path="/materials" element={<Materials />} />
-              <Route path="/documents" element={<Documents />} />
-              <Route path="/payments" element={<Payments />} />
-              <Route path="/storage" element={<StorageManager />} />
-              <Route path="/messages" element={<Messages />} />
-            </Routes>
-          </div>
-        </Content>
-        <Footer className="text-center text-slate-400">
-          © {new Date().getFullYear()} Breeza
-        </Footer>
-      </Layout>
-      <FloatingChat />
-    </Layout>
-  );
+  return <main className="app-shell">
+    <header className="hero"><div className="hero-glow"/><div className="ganpati-mark">ॐ</div><p className="eyebrow">Breeza Society</p><h1>Ganpati Utsav 2026</h1><p className="blessing">गणपती बाप्पा मोरया</p></header>
+    <section className="content">
+      <div className="wing-switch">{["A","B"].map((item) => <button key={item} className={wing === item ? "active" : ""} onClick={() => { setWing(item); setForm(emptyForm); }}>Building {item}</button>)}</div>
+      <div className="money-grid"><div className="money-card received"><span>Received</span><strong>{money.format(incoming)}</strong></div><div className="money-card spent"><span>Spent</span><strong>{money.format(outgoing)}</strong></div><div className="money-card balance"><span>Balance</span><strong>{money.format(incoming - outgoing)}</strong></div></div>
+      <div className="view-tabs"><button className={view === "owners" ? "active" : ""} onClick={() => setView("owners")}>Owner register</button><button className={view === "ledger" ? "active" : ""} onClick={() => setView("ledger")}>Income & expenses</button></div>
+      <div className="toolbar"><label className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={view === "owners" ? "Search owner or flat" : "Search ledger"}/></label><button className="add-button" onClick={() => setShowForm(!showForm)}>{showForm ? "Close" : "+ Entry"}</button></div>
+      {showForm && <form className="entry-form" onSubmit={saveTransaction}>
+        <div className="type-switch"><button type="button" className={form.type === "incoming" ? "active incoming" : ""} onClick={() => changeType("incoming")}>↓ Money in</button><button type="button" className={form.type === "outgoing" ? "active outgoing" : ""} onClick={() => changeType("outgoing")}>↑ Expense</button></div>
+        {form.type === "incoming" ? <>
+          <label className="check-line"><input type="checkbox" checked={form.anonymous} onChange={(e) => setForm({ ...form, anonymous: e.target.checked, ownerId: "" })}/> Anonymous Ganpati contribution</label>
+          {form.anonymous ? <label>Name (optional)<input value={form.anonymousName} onChange={(e) => setForm({ ...form, anonymousName: e.target.value })} placeholder="Leave blank for Anonymous"/></label> : <label>Owner / Flat<select required value={form.ownerId} onChange={(e) => setForm({ ...form, ownerId: e.target.value })}><option value="">Select registered owner</option>{owners.map((owner) => <option key={owner.id} value={owner.id}>Flat {owner.flat} - {owner.name}</option>)}</select></label>}
+        </> : <label>Expense purpose<input required value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })} placeholder="Decoration, prasad, sound…"/></label>}
+        <div className="form-row"><label>Amount<input required type="number" min="1" inputMode="numeric" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="₹ 0"/></label><label>Payment mode<select value={form.mode} onChange={(e) => setForm({ ...form, mode: e.target.value })}><option>UPI</option><option>Cash</option><option>Bank transfer</option><option>Other</option></select></label></div>
+        <label>Date<input required type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })}/></label><label>Remarks (optional)<input value={form.remarks} onChange={(e) => setForm({ ...form, remarks: e.target.value })} placeholder="Receipt or note"/></label>
+        <button className="save-button" disabled={saving}>{saving ? "Saving…" : `Save ${form.type === "incoming" ? "contribution" : "expense"}`}</button>
+      </form>}
+      {error && <p className="error-message">{error}</p>}
+      <div className="list-heading"><h2>{view === "owners" ? `Building ${wing} owners` : "Transaction ledger"}</h2><span>{view === "owners" ? visibleOwners.length : visibleLedger.length}</span></div>
+      {loading ? <div className="empty-state">Loading Ganpati ledger…</div> : view === "owners" ? <div className="contribution-list">{visibleOwners.map((owner) => <article className="contribution" key={owner.id}><div className="avatar">{owner.flat.split(" ")[0]}</div><div className="person"><strong>{owner.name}</strong><span>Flat {owner.flat}</span></div><div className="amount"><strong>{ownerTotals[owner.id] ? money.format(ownerTotals[owner.id]) : "—"}</strong><small className={ownerTotals[owner.id] ? "received-text" : "pending-text"}>{ownerTotals[owner.id] ? "Received" : "No entry"}</small></div></article>)}</div> : visibleLedger.length ? <div className="contribution-list">{visibleLedger.map((item) => <article className="contribution" key={item.id}><div className={`avatar ${item.type}`}>{item.type === "outgoing" ? "↑" : "↓"}</div><div className="person"><strong>{item.type === "outgoing" ? item.purpose : item.name || "Contribution"}</strong><span>{item.type === "outgoing" ? "Expense" : `Flat ${item.flat || "—"}`} · {item.mode || "Mode not set"} · {item.date || "No date"}</span>{item.remarks && <em>{item.remarks}</em>}</div><div className={`amount ${item.type}`}><strong>{item.type === "outgoing" ? "−" : "+"}{money.format(Number(item.amount) || 0)}</strong></div></article>)}</div> : <div className="empty-state"><div>🙏</div><strong>No transactions yet</strong><p>Add an incoming contribution or outgoing expense.</p></div>}
+    </section><footer>Ganpati-only account · Breeza Society</footer>
+  </main>;
 }

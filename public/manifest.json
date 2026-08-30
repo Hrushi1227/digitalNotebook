@@ -1,11 +1,11 @@
 {
-  "name": "Breeza - Construction Management",
-  "short_name": "Breeza",
-  "description": "Manage your construction projects, workers, materials, and payments",
+  "name": "Breeza Ganpati Collection",
+  "short_name": "Ganpati",
+  "description": "Ganpati contribution collection for Breeza Society",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
-  "theme_color": "#1890ff",
+  "theme_color": "#a9361d",
   "orientation": "portrait-primary",
   "icons": [
     {

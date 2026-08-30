@@ -33,12 +33,11 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["icon-192.png", "icon-512.png"],
       manifest: {
-        name: "Breeza - Construction Management",
-        short_name: "Breeza",
-        description:
-          "Manage your construction projects, workers, materials, and payments",
-        theme_color: "#1890ff",
-        background_color: "#ffffff",
+        name: "Breeza Ganpati Collection",
+        short_name: "Ganpati",
+        description: "Ganpati contribution collection for Breeza Society",
+        theme_color: "#a9361d",
+        background_color: "#fff9ef",
         display: "standalone",
         orientation: "portrait-primary",
         start_url: "/",
