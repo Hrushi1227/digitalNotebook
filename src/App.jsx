@@ -2,11 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { addDoc, collection, doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { jsPDF } from "jspdf";
+import { QRCode } from "antd";
 import { auth, db } from "./firebase";
 import { ownersFor } from "./data/ganpatiOwners";
 
 const COLLECTIONS = { A: "ganpati_collection_a", B: "ganpati_collection_b" };
 const ADMIN_EMAIL = "breezasociety2026@gmail.com";
+const UPI_ID = "shakupatil1990-1@okaxis";
+const UPI_LINK = `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent("Breeza Society Ganpati Utsav")}&cu=INR`;
 const money = new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR", maximumFractionDigits: 0 });
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -28,6 +31,7 @@ export default function App() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loginError, setLoginError] = useState("");
+  const [copiedUpi, setCopiedUpi] = useState(false);
   const emptyForm = { type: "incoming", ownerId: "", anonymous: false, anonymousName: "", purpose: "", amount: "", mode: "UPI", date: today(), remarks: "" };
   const [form, setForm] = useState(emptyForm);
   const owners = useMemo(() => ownersFor(wing), [wing]);
@@ -61,6 +65,10 @@ export default function App() {
   const visibleLedger = normalized.filter((item) => item.type === "outgoing").sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).filter((item) => `${item.purpose || ""} ${item.remarks || ""}`.toLowerCase().includes(q));
 
   function changeType(type) { setForm({ ...emptyForm, type }); }
+  async function copyUpiId() {
+    try { await navigator.clipboard.writeText(UPI_ID); setCopiedUpi(true); setTimeout(() => setCopiedUpi(false), 1800); }
+    catch { setError(`Please copy the UPI ID: ${UPI_ID}`); }
+  }
   async function adminLogin(event) {
     event.preventDefault();
     setLoginError("");
@@ -162,7 +170,9 @@ export default function App() {
   }
 
   return <main className="app-shell">
-    <header className="hero"><button className="admin-access" onClick={() => isAdmin ? adminLogout() : setShowLogin(true)}>{isAdmin ? "Exit admin" : "🔒 Admin"}</button><div className="hero-glow"/><div className="ganpati-mark">ॐ</div><p className="eyebrow">Breeza Society</p><h1>Ganpati Utsav 2026</h1><p className="blessing">गणपती बाप्पा मोरया</p><p className="creator-credit">Created by Rushikesh Ghatol · A-1302</p></header>
+    <header className="hero"><button className="admin-access" onClick={() => isAdmin ? adminLogout() : setShowLogin(true)}>{isAdmin ? "Exit admin" : "🔒 Admin"}</button><div className="hero-glow"/><div className="ganpati-mark">ॐ</div><p className="eyebrow">Breeza Society</p><h1>Ganpati Utsav 2026</h1><p className="blessing">गणपती बाप्पा मोरया</p><p className="creator-credit">Created by Rushikesh Ghatol · A-1302</p>
+      <div className="upi-card hero-upi"><div className="upi-copy"><span>Ganpati contribution UPI</span><div className="upi-id-row"><strong>{UPI_ID}</strong><button onClick={copyUpiId} aria-label="Copy UPI ID">{copiedUpi ? "✓ Copied" : "⧉ Copy"}</button></div></div><div className="qr-frame"><QRCode value={UPI_LINK} size={156} type="svg" bordered={false} errorLevel="H"/></div><div className="upi-actions"><div><strong>Scan to contribute</strong><span>Use any UPI app</span></div><a href={UPI_LINK}>Pay via UPI</a></div></div>
+    </header>
     <section className="content">
       <div className="wing-switch">{["A","B"].map((item) => <button key={item} className={wing === item ? "active" : ""} onClick={() => { setWing(item); setForm(emptyForm); }}>Building {item}</button>)}</div>
       {isAdmin ? <><div className="admin-banner"><span>Admin view · Financial details unlocked</span><button onClick={downloadAuditPdf}>↓ Audit PDF</button></div><div className="money-grid"><div className="money-card received"><span>Received</span><strong>{money.format(incoming)}</strong></div><div className="money-card spent"><span>Spent</span><strong>{money.format(outgoing)}</strong></div><div className="money-card balance"><span>Balance</span><strong>{money.format(incoming - outgoing)}</strong></div></div><div className="view-tabs"><button className={view === "owners" ? "active" : ""} onClick={() => setView("owners")}>Owner register</button><button className={view === "ledger" ? "active" : ""} onClick={() => setView("ledger")}>Expenses</button></div></> : <div className="privacy-note"><span>🔒</span><div><strong>Contribution amounts are private</strong><p>Only collection status is shown publicly.</p></div></div>}
