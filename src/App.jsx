@@ -17,12 +17,14 @@ export default function App() {
   const [wing, setWing] = useState("A");
   const [view, setView] = useState("owners");
   const [entries, setEntries] = useState([]);
+  const [auditEntries, setAuditEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publicStatuses, setPublicStatuses] = useState({});
+  const [lowAmountOwners, setLowAmountOwners] = useState({});
   const [publicSummary, setPublicSummary] = useState({ received: 0, spent: 0, pendingReview: 0, balance: 0 });
   const [wingSummaries, setWingSummaries] = useState({ A: { received: 0, spent: 0 }, B: { received: 0, spent: 0 } });
   const [publicExpensesA, setPublicExpensesA] = useState([]);
@@ -51,12 +53,23 @@ export default function App() {
     }, () => { setError("Could not load the Ganpati ledger. Please check your connection."); setLoading(false); });
   }, [wing, isAdmin]);
 
+  useEffect(() => {
+    if (!isAdmin) { setAuditEntries([]); return undefined; }
+    let buildingA = []; let buildingB = [];
+    const updateAuditEntries = () => setAuditEntries([...buildingA, ...buildingB]);
+    const stopA = onSnapshot(collection(db, COLLECTIONS.A), (snapshot) => { buildingA = snapshot.docs.map((item) => ({ id: item.id, wing: "A", ...item.data() })); updateAuditEntries(); }, () => setError("Building A audit data could not be loaded."));
+    const stopB = onSnapshot(collection(db, COLLECTIONS.B), (snapshot) => { buildingB = snapshot.docs.map((item) => ({ id: item.id, wing: "B", ...item.data() })); updateAuditEntries(); }, () => setError("Building B audit data could not be loaded."));
+    return () => { stopA(); stopB(); };
+  }, [isAdmin]);
+
   useEffect(() => onAuthStateChanged(auth, (user) => setIsAdmin(Boolean(user))), []);
 
   useEffect(() => onSnapshot(collection(db, `ganpati_public_status_${wing.toLowerCase()}`), (snapshot) => {
     const statuses = {};
-    snapshot.docs.forEach((item) => { const data = item.data(); if (data.ownerId) statuses[data.ownerId] = data.received ? "received" : data.pending ? "pending" : "none"; });
+    const lowAmounts = {};
+    snapshot.docs.forEach((item) => { const data = item.data(); if (data.ownerId) { statuses[data.ownerId] = data.received ? "received" : data.pending ? "pending" : "none"; lowAmounts[data.ownerId] = Boolean(data.lowAmount); } });
     setPublicStatuses(statuses);
+    setLowAmountOwners(lowAmounts);
   }, () => setError("Public collection status could not be loaded.")), [wing]);
 
   useEffect(() => onSnapshot(collection(db, "ganpati_public_summary"), (snapshot) => {
@@ -104,12 +117,28 @@ export default function App() {
     if (!isAdmin || loading) return;
     normalized.filter((item) => item.type === "incoming" && item.verificationStatus === "pending").forEach((item) => setDoc(doc(db, "ganpati_public_pending", item.id), { amount: Number(item.amount) || 0, wing, pending: true, anonymous: Boolean(item.anonymous), updatedAt: serverTimestamp() }).catch(() => {}));
   }, [isAdmin, loading, wing, entries]);
+  useEffect(() => {
+    if (!isAdmin || loading) return;
+    owners.forEach((owner) => {
+      const ownerEntries = normalized.filter((item) => item.type === "incoming" && item.ownerId === owner.id && Number(item.amount) > 0);
+      if (!ownerEntries.length) return;
+      const received = ownerEntries.some((item) => item.verificationStatus !== "pending");
+      const pending = !received && ownerEntries.some((item) => item.verificationStatus === "pending");
+      const total = ownerEntries.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+      setDoc(doc(db, `ganpati_public_status_${wing.toLowerCase()}`, encodeURIComponent(owner.id)), { ownerId: owner.id, received, pending, lowAmount: total < 100, updatedAt: serverTimestamp() }).catch(() => {});
+    });
+  }, [isAdmin, loading, wing, entries, owners]);
   const ownerTotals = useMemo(() => normalized.reduce((totals, item) => {
     if ((item.type || "incoming") === "incoming" && item.verificationStatus !== "pending" && item.ownerId) totals[item.ownerId] = (totals[item.ownerId] || 0) + (Number(item.amount) || 0);
     return totals;
   }, {}), [entries]);
   const q = search.trim().toLowerCase();
   const visibleOwners = owners.filter((owner) => `${owner.flat} ${owner.name}`.toLowerCase().includes(q));
+  const lowOwnerIndexes = visibleOwners.map((owner, index) => {
+    const privateAmounts = normalized.filter((item) => item.type === "incoming" && item.ownerId === owner.id && Number(item.amount) > 0);
+    const adminLowAmount = privateAmounts.length > 0 && privateAmounts.reduce((sum, item) => sum + (Number(item.amount) || 0), 0) < 100;
+    return lowAmountOwners[owner.id] || (isAdmin && adminLowAmount) ? index + 1 : null;
+  }).filter(Boolean);
   const visibleLedger = normalized.filter((item) => item.type === "outgoing").sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).filter((item) => `${item.purpose || ""} ${item.remarks || ""}`.toLowerCase().includes(q));
   const visiblePublicExpenses = [...publicExpensesA, ...publicExpensesB].sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).filter((item) => `${item.purpose || ""} ${item.remarks || ""} ${item.wing || ""}`.toLowerCase().includes(q));
   const expenseRows = isAdmin ? visibleLedger : visiblePublicExpenses;
@@ -121,7 +150,7 @@ export default function App() {
     return { ...item, ownerId: matchedOwner?.id || null, name: matchedOwner?.name || (item.anonymous ? "Anonymous" : "Unlinked pending entry"), flat: matchedOwner?.flat || (item.anonymous ? "Anonymous" : "Details unavailable"), anonymous: Boolean(item.anonymous), orphan: true, verificationStatus: "pending" };
   });
   const pendingContributions = [...privatePendingContributions].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
-  const allReviewItems = [...privatePendingContributions, ...orphanPendingContributions].sort((a, b) => String(b.date || "").localeCompare(String(a.date || "")));
+  const allReviewItems = [...privatePendingContributions, ...orphanPendingContributions].sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).filter((item) => `${item.name || ""} ${item.flat || ""} ${item.amount || ""} ${item.remarks || ""}`.toLowerCase().includes(q));
   const pendingAmount = pendingContributions.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
   const contributionPaymentLink = editingContribution ? `${UPI_LINK}&am=${encodeURIComponent(contributionEdit.amount || "")}&tn=${encodeURIComponent(editingContribution.owner.anonymous ? `Anonymous Ganpati contribution - Building ${wing}` : `Ganpati contribution - Building ${wing}, Flat ${editingContribution.owner.flat}`)}` : UPI_LINK;
 
@@ -162,7 +191,7 @@ export default function App() {
         await updateDoc(contributionRef, payload);
       } else contributionRef = await addDoc(collection(db, COLLECTIONS[wing]), { ...payload, createdAt: serverTimestamp() });
       if (!isAdmin) await setDoc(doc(db, "ganpati_public_pending", contributionRef.id), { amount: Number(contributionEdit.amount), wing, pending: true, anonymous: isAnonymous, createdAt: serverTimestamp() });
-      if (!isAnonymous) await setDoc(doc(db, `ganpati_public_status_${wing.toLowerCase()}`, encodeURIComponent(editingContribution.owner.id)), { ownerId: editingContribution.owner.id, received: isAdmin && Number(contributionEdit.amount) > 0, pending: !isAdmin && Number(contributionEdit.amount) > 0, updatedAt: serverTimestamp() });
+      if (!isAnonymous) await setDoc(doc(db, `ganpati_public_status_${wing.toLowerCase()}`, encodeURIComponent(editingContribution.owner.id)), { ownerId: editingContribution.owner.id, received: isAdmin && Number(contributionEdit.amount) > 0, pending: !isAdmin && Number(contributionEdit.amount) > 0, lowAmount: Number(contributionEdit.amount) < 100, updatedAt: serverTimestamp() });
       if (isAdmin) setEditingContribution(null);
       else {
         const paymentUrl = contributionPaymentLink;
@@ -194,12 +223,12 @@ export default function App() {
       if (item.orphan) {
         await addDoc(collection(db, COLLECTIONS[item.wing || wing]), { type: "incoming", ownerId: item.ownerId || null, name: item.ownerId ? item.name : "Anonymous", flat: item.ownerId ? item.flat : "Anonymous", anonymous: !item.ownerId, amount: Number(item.amount) || 0, mode: item.mode || "UPI", date: item.date || today(), remarks: "Recovered from pending payment review", verificationStatus: "verified", wing: item.wing || wing, verifiedAt: serverTimestamp(), createdAt: serverTimestamp() });
         await deleteDoc(doc(db, "ganpati_public_pending", item.id));
-        if (item.ownerId) await setDoc(doc(db, `ganpati_public_status_${(item.wing || wing).toLowerCase()}`, encodeURIComponent(item.ownerId)), { ownerId: item.ownerId, received: true, pending: false, updatedAt: serverTimestamp() });
+        if (item.ownerId) await setDoc(doc(db, `ganpati_public_status_${(item.wing || wing).toLowerCase()}`, encodeURIComponent(item.ownerId)), { ownerId: item.ownerId, received: true, pending: false, lowAmount: Number(item.amount) < 100, updatedAt: serverTimestamp() });
         return;
       }
       await updateDoc(doc(db, COLLECTIONS[wing], item.id), { verificationStatus: "verified", verifiedAt: serverTimestamp() });
       await deleteDoc(doc(db, "ganpati_public_pending", item.id));
-      if (item.ownerId) await setDoc(doc(db, `ganpati_public_status_${wing.toLowerCase()}`, encodeURIComponent(item.ownerId)), { ownerId: item.ownerId, received: true, pending: false, updatedAt: serverTimestamp() });
+      if (item.ownerId) await setDoc(doc(db, `ganpati_public_status_${wing.toLowerCase()}`, encodeURIComponent(item.ownerId)), { ownerId: item.ownerId, received: true, pending: false, lowAmount: Number(item.amount) < 100, updatedAt: serverTimestamp() });
     } catch { setError("Payment could not be confirmed. Please try again."); }
   }
   async function deletePendingContribution(item) {
@@ -226,7 +255,7 @@ export default function App() {
         createdAt: serverTimestamp(),
       });
       if (form.type === "outgoing") await setDoc(doc(db, `ganpati_public_expenses_${wing.toLowerCase()}`, transactionRef.id), { purpose: form.purpose.trim(), amount: Number(form.amount), mode: form.mode, date: form.date, remarks: form.remarks.trim(), createdAt: serverTimestamp() });
-      if (form.type === "incoming" && !form.anonymous && owner) await setDoc(doc(db, `ganpati_public_status_${wing.toLowerCase()}`, encodeURIComponent(owner.id)), { ownerId: owner.id, received: true, updatedAt: serverTimestamp() });
+      if (form.type === "incoming" && !form.anonymous && owner) await setDoc(doc(db, `ganpati_public_status_${wing.toLowerCase()}`, encodeURIComponent(owner.id)), { ownerId: owner.id, received: true, pending: false, lowAmount: Number(form.amount) < 100, updatedAt: serverTimestamp() });
       setForm(emptyForm); setShowForm(false); setView("ledger");
     } catch { setError("Transaction could not be saved. Please try again."); }
     finally { setSaving(false); }
@@ -234,9 +263,13 @@ export default function App() {
 
   function downloadAuditPdf() {
     if (!isAdmin) return;
-    const contributions = normalized
-      .filter((item) => item.type === "incoming" && Number(item.amount) > 0)
-      .sort((a, b) => String(a.flat || "").localeCompare(String(b.flat || ""), undefined, { numeric: true }));
+    const combinedEntries = auditEntries.map((item) => ({ ...item, type: item.type || "incoming" }));
+    const contributions = combinedEntries.filter((item) => item.type === "incoming" && item.verificationStatus !== "pending" && Number(item.amount) > 0);
+    const expenses = combinedEntries.filter((item) => item.type === "outgoing" && Number(item.amount) > 0);
+    const auditRows = [...contributions, ...expenses].sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.flat || "").localeCompare(String(b.flat || ""), undefined, { numeric: true }));
+    const auditReceived = contributions.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const auditSpent = expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const auditPending = combinedEntries.filter((item) => item.type === "incoming" && item.verificationStatus === "pending").reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const pdf = new jsPDF({ unit: "mm", format: "a4" });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const margin = 14;
@@ -252,23 +285,36 @@ export default function App() {
       pdf.setFont("helvetica", "bold"); pdf.setFontSize(16);
       pdf.text("Breeza Society - Ganpati Utsav 2026", margin, 12);
       pdf.setFont("helvetica", "normal"); pdf.setFontSize(9);
-      pdf.text(`Building ${wing} Contribution Audit`, margin, 19);
+      pdf.text("Combined Building A + B Financial Audit", margin, 19);
       pdf.text(`Generated: ${new Date().toLocaleString("en-IN")}`, margin, 24);
       pdf.setTextColor(50, 36, 28);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(11);
-      pdf.text(`Total received: Rs. ${incoming.toLocaleString("en-IN")}`, margin, 37);
+      const summaryCells = [
+        ["Received", Number(publicSummary.received) || 0], ["Spent", Number(publicSummary.spent) || 0], ["Pending review", Number(publicSummary.pendingReview) || 0],
+        ["Building A balance", wingSummaries.A.received - wingSummaries.A.spent], ["Building B balance", wingSummaries.B.received - wingSummaries.B.spent], ["Combined A + B", Number(publicSummary.balance) || 0],
+      ];
+      const summaryWidth = (pageWidth - margin * 2) / 3;
+      summaryCells.forEach(([label, value], index) => {
+        const col = index % 3; const row = Math.floor(index / 3); const x = margin + col * summaryWidth; const boxY = 32 + row * 13;
+        pdf.setDrawColor(224, 205, 191); pdf.setFillColor(row ? 250 : 255, row ? 244 : 250, row ? 238 : 246);
+        pdf.rect(x, boxY, summaryWidth, 13, "FD");
+        pdf.setFont("helvetica", "normal"); pdf.setFontSize(6.8); pdf.setTextColor(120, 84, 65); pdf.text(label, x + 2, boxY + 4.2);
+        pdf.setFont("helvetica", "bold"); pdf.setFontSize(9); pdf.setTextColor(55, 37, 29); pdf.text(`Rs. ${Number(value).toLocaleString("en-IN")}`, x + 2, boxY + 9.8);
+      });
+      pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5); pdf.setTextColor(80, 54, 42);
+      pdf.text(`Combined ledger: Received Rs. ${auditReceived.toLocaleString("en-IN")}  |  Spent Rs. ${auditSpent.toLocaleString("en-IN")}  |  Balance Rs. ${(auditReceived - auditSpent).toLocaleString("en-IN")}  |  Pending Rs. ${auditPending.toLocaleString("en-IN")}`, margin, 61);
       pdf.setFontSize(8); pdf.setTextColor(255, 255, 255); pdf.setFillColor(74, 48, 36);
-      pdf.rect(margin, 42, pageWidth - margin * 2, 8, "F");
-      ["No.", "Flat", "Resident / Owner", "Amount", "Mode", "Date", "Remarks"].forEach((label, index) => pdf.text(label, columns[index] + 1.5, 47.2));
-      pdf.setTextColor(50, 36, 28); y = 52;
+      pdf.rect(margin, 64, pageWidth - margin * 2, 8, "F");
+      ["No.", "Type", "Resident / Purpose", "Amount", "Mode", "Date", "Remarks"].forEach((label, index) => pdf.text(label, columns[index] + 1.5, 69.2));
+      pdf.setTextColor(50, 36, 28); y = 74;
     };
 
     const addPage = () => { if (page > 0) pdf.addPage(); page += 1; drawHeader(); };
     page = 0; addPage();
 
-    contributions.forEach((item, index) => {
+    auditRows.forEach((item, index) => {
       pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5);
-      const values = [String(index + 1), item.flat || "Anonymous", item.name || "Anonymous", `Rs. ${(Number(item.amount) || 0).toLocaleString("en-IN")}`, item.mode || "-", item.date || "-", item.remarks || "-"];
+      const isExpense = item.type === "outgoing";
+      const values = [String(index + 1), isExpense ? `${item.wing} Expense` : (item.anonymous ? `${item.wing} Anonymous` : `${item.wing} - Flat ${item.flat || "-"}`), isExpense ? (item.purpose || "Expense") : (item.name || "Anonymous"), `${isExpense ? "-" : "+"} Rs. ${(Number(item.amount) || 0).toLocaleString("en-IN")}`, item.mode || "-", item.date || "-", item.remarks || "-"];
       const lines = values.map((value, col) => pdf.splitTextToSize(String(value), widths[col] - 3));
       const rowHeight = Math.max(8, ...lines.map((line) => line.length * 3.4 + 3));
       if (y + rowHeight > 279) addPage();
@@ -278,28 +324,69 @@ export default function App() {
       y += rowHeight;
     });
 
-    if (!contributions.length) { pdf.setFontSize(10); pdf.text("No received contributions recorded.", margin, y + 8); }
+    if (!auditRows.length) { pdf.setFontSize(10); pdf.text("No verified financial transactions recorded.", margin, y + 8); }
     const pages = pdf.getNumberOfPages();
     for (let i = 1; i <= pages; i += 1) {
       pdf.setPage(i); pdf.setFontSize(7); pdf.setTextColor(120, 95, 82);
       pdf.text(`Private admin audit - Created by Rushikesh Ghatol, A-1302`, margin, 291);
       pdf.text(`Page ${i} of ${pages}`, pageWidth - margin, 291, { align: "right" });
     }
-    pdf.save(`Breeza_Ganpati_2026_Building_${wing}_Contribution_Audit.pdf`);
+    pdf.save("Breeza_Ganpati_2026_Combined_A_B_Financial_Audit.pdf");
+  }
+
+  function downloadPendingOwnersPdf() {
+    if (!isAdmin) return;
+    const unpaidOwners = owners.filter((owner) => !ownerTotals[owner.id] && !privatePendingContributions.some((item) => item.ownerId === owner.id));
+    const pdf = new jsPDF({ unit: "mm", format: "a4" });
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const margin = 14;
+    let page = 0;
+    let y = 0;
+
+    const drawHeader = () => {
+      pdf.setFillColor(154, 49, 27); pdf.rect(0, 0, pageWidth, 30, "F");
+      pdf.setTextColor(255, 255, 255); pdf.setFont("helvetica", "bold"); pdf.setFontSize(16);
+      pdf.text("Breeza Society - Ganpati Utsav 2026", margin, 12);
+      pdf.setFontSize(10); pdf.text(`Building ${wing} - Contribution Yet to Receive`, margin, 20);
+      pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.text(`Generated: ${new Date().toLocaleString("en-IN")}`, margin, 26);
+      pdf.setTextColor(65, 43, 33); pdf.setFont("helvetica", "bold"); pdf.setFontSize(10);
+      pdf.text(`Total owners yet to contribute: ${unpaidOwners.length}`, margin, 39);
+      pdf.setFillColor(74, 48, 36); pdf.rect(margin, 44, pageWidth - margin * 2, 9, "F");
+      pdf.setTextColor(255, 255, 255); pdf.setFontSize(8);
+      pdf.text("No.", margin + 2, 49.8); pdf.text("Flat", margin + 18, 49.8); pdf.text("Resident / Owner name", margin + 48, 49.8); pdf.text("Status", pageWidth - margin - 30, 49.8);
+      y = 55;
+    };
+    const addPage = () => { if (page > 0) pdf.addPage(); page += 1; drawHeader(); };
+    addPage();
+    unpaidOwners.forEach((owner, index) => {
+      const nameLines = pdf.splitTextToSize(owner.name, 92);
+      const rowHeight = Math.max(9, nameLines.length * 4 + 4);
+      if (y + rowHeight > 279) addPage();
+      pdf.setFillColor(index % 2 ? 251 : 255, index % 2 ? 247 : 255, index % 2 ? 243 : 255); pdf.setDrawColor(226, 212, 202);
+      pdf.rect(margin, y, pageWidth - margin * 2, rowHeight, "FD");
+      pdf.setTextColor(55, 40, 32); pdf.setFont("helvetica", "normal"); pdf.setFontSize(8);
+      pdf.text(String(index + 1), margin + 2, y + 5.8); pdf.text(String(owner.flat), margin + 18, y + 5.8); pdf.text(nameLines, margin + 48, y + 5.8);
+      pdf.setTextColor(151, 96, 20); pdf.setFont("helvetica", "bold"); pdf.text("Yet to receive", pageWidth - margin - 30, y + 5.8);
+      y += rowHeight;
+    });
+    if (!unpaidOwners.length) { pdf.setTextColor(55, 40, 32); pdf.setFontSize(11); pdf.text("All registered owners have contributed or submitted a payment for review.", margin, y + 10); }
+    const pages = pdf.getNumberOfPages();
+    for (let index = 1; index <= pages; index += 1) { pdf.setPage(index); pdf.setTextColor(120, 95, 82); pdf.setFontSize(7); pdf.text("Private admin report - Created by Rushikesh Ghatol, A-1302", margin, 291); pdf.text(`Page ${index} of ${pages}`, pageWidth - margin, 291, { align: "right" }); }
+    pdf.save(`Breeza_Ganpati_2026_Building_${wing}_Pending_Owners.pdf`);
   }
 
   return <main className="app-shell">
     <header className="hero"><button className="admin-access" onClick={() => isAdmin ? adminLogout() : setShowLogin(true)}>{isAdmin ? "Exit admin" : "🔒 Admin"}</button><div className="hero-glow"/><div className="ganpati-mark">ॐ</div><p className="eyebrow">Breeza Society</p><h1>Ganpati Utsav 2026</h1><p className="blessing">गणपती बाप्पा मोरया</p><p className="creator-credit">Created by Rushikesh Ghatol · A-1302</p>
       <div className="upi-card hero-upi"><div className="upi-copy"><span>Ganpati contribution UPI</span><div className="upi-id-row"><strong>{UPI_ID}</strong><button onClick={copyUpiId} aria-label="Copy UPI ID">{copiedUpi ? "✓ Copied" : "⧉ Copy"}</button></div></div><div className="qr-frame"><QRCode value={UPI_LINK} size={156} type="svg" bordered={false} errorLevel="H"/></div><div className="upi-actions"><div><strong>Scan to contribute</strong><span>Use any UPI app</span></div><a href={UPI_LINK}>Pay via UPI</a></div></div>
     </header>
-    <section className={`content ${view === "reviews" ? "review-mode" : ""}`}>
+    <section className={`content ${view === "reviews" ? "review-mode" : ""} ${view === "owners" ? "owners-mode" : ""}`}>
       <div className="wing-switch">{["A","B"].map((item) => <button key={item} className={wing === item ? "active" : ""} onClick={() => { setWing(item); setForm(emptyForm); }}>Building {item}</button>)}</div>
-      {isAdmin ? <div className="admin-banner"><span>Admin view · Financial details unlocked</span><button onClick={downloadAuditPdf}>↓ Audit PDF</button></div> : <div className="privacy-note"><span>🔒</span><div><strong>Personal contributions are private</strong><p>Only combined society totals are public.</p></div></div>}
+      {isAdmin ? <div className="admin-banner"><span>Admin view · Financial details unlocked</span><div className="admin-exports"><button onClick={downloadAuditPdf}>↓ Audit PDF</button><button onClick={downloadPendingOwnersPdf}>↓ Pending owners</button></div></div> : <div className="privacy-note"><span>🔒</span><div><strong>Personal contributions are private</strong><p>Only combined society totals are public.</p></div></div>}
       <div className="combined-label">Combined society totals · Building A + B</div><div className="money-grid public-totals"><div className="money-card received"><span>Received</span><strong>{money.format(Number(publicSummary.received) || 0)}</strong><button className="tile-view" onClick={() => isAdmin ? setView("owners") : setShowLogin(true)}>View</button></div><div className="money-card spent"><span>Spent</span><strong>{money.format(Number(publicSummary.spent) || 0)}</strong><button className="tile-view" onClick={() => setView("ledger")}>View expenses</button></div><div className="money-card pending-total"><span>Pending review</span><strong>{money.format(Number(publicSummary.pendingReview) || 0)}</strong><button className="tile-view" onClick={() => isAdmin ? setView("reviews") : setShowLogin(true)}>{isAdmin ? `Review Building ${wing}` : "View"}</button></div><div className="money-card balance"><span>Balance</span><strong>{money.format(Number(publicSummary.balance) || 0)}</strong></div></div>
       <div className="section-balances"><div><span>Building A</span><strong>{money.format(wingSummaries.A.received - wingSummaries.A.spent)}</strong></div><div><span>Building B</span><strong>{money.format(wingSummaries.B.received - wingSummaries.B.spent)}</strong></div><div className="combined"><span>Combined A + B</span><strong>{money.format(Number(publicSummary.balance) || 0)}</strong></div></div>
       {!isAdmin && <button className="anonymous-contribution" onClick={startAnonymousContribution}><span>Anonymous contribution</span><small>Contribute without displaying your name or flat</small></button>}
       {isAdmin && <div className="view-tabs"><button className={view === "owners" ? "active" : ""} onClick={() => setView("owners")}>Owners</button><button className={view === "reviews" ? "active" : ""} onClick={() => setView("reviews")}>To review {pendingContributions.length ? `(${pendingContributions.length})` : ""}</button><button className={view === "ledger" ? "active" : ""} onClick={() => setView("ledger")}>Expenses</button></div>}
-      <div className="toolbar"><label className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={view === "owners" ? "Search owner or flat" : "Search ledger"}/></label>{isAdmin && <button className="add-button" onClick={() => setShowForm(!showForm)}>{showForm ? "Close" : "+ Entry"}</button>}</div>
+      <div className="toolbar"><label className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={view === "owners" ? "Search owner or flat" : view === "reviews" ? "Search pending payments" : "Search expenses"}/></label>{isAdmin && view !== "reviews" && <button className="add-button" onClick={() => setShowForm(!showForm)}>{showForm ? "Close" : "+ Entry"}</button>}</div>
       {isAdmin && showForm && <form className="entry-form" onSubmit={saveTransaction}>
         <div className="type-switch"><button type="button" className={form.type === "incoming" ? "active incoming" : ""} onClick={() => changeType("incoming")}>↓ Money in</button><button type="button" className={form.type === "outgoing" ? "active outgoing" : ""} onClick={() => changeType("outgoing")}>↑ Expense</button></div>
         {form.type === "incoming" ? <>
@@ -311,7 +398,8 @@ export default function App() {
         <button className="save-button" disabled={saving}>{saving ? "Saving…" : `Save ${form.type === "incoming" ? "contribution" : "expense"}`}</button>
       </form>}
       {error && <p className="error-message">{error}</p>}
-      {isAdmin && view === "reviews" && <div className="unified-reviews"><div className="unified-review-heading"><h2>Payments awaiting confirmation</h2><span>{allReviewItems.length}</span></div>{allReviewItems.length ? allReviewItems.map((item) => <article className={`review-card ${item.orphan ? "invalid-review" : ""}`} key={item.id}><div className="review-top"><div className="avatar pending-avatar">{item.orphan ? "!" : "?"}</div><div className="person"><strong>{item.name || "Anonymous"}</strong><span>Building {item.wing || wing} · Flat {item.flat || "Anonymous"} · {item.date || "No date"}</span></div><strong className="review-amount">{money.format(Number(item.amount) || 0)}</strong></div>{item.orphan ? <><p className="invalid-note">No matching private payment details. Confirm only after checking receipt.</p><div className="review-actions"><button className="approve-payment" onClick={() => approveContribution(item)}>✓ Confirm received</button><button className="delete-invalid-payment" onClick={() => deletePendingContribution(item)}>Delete invalid entry</button></div></> : <><div className="review-meta"><span>{item.mode || "UPI"}</span>{item.remarks && <span>Ref: {item.remarks}</span>}</div><button className="approve-payment" onClick={() => approveContribution(item)}>✓ Confirm received</button></>}</article>) : <div className="empty-state"><div>✓</div><strong>All payments reviewed</strong><p>No contribution is waiting for confirmation.</p></div>}</div>}
+      {view === "owners" && lowOwnerIndexes.length > 0 && <style>{lowOwnerIndexes.map((index) => `.owners-mode .contribution-list>.contribution:nth-child(${index}){border-color:#e09a24;background:#fff6d8;box-shadow:0 0 0 2px #f6c65a55}`).join("")}</style>}
+      {isAdmin && view === "reviews" && <div className="unified-reviews"><div className="unified-review-heading"><h2>Payments awaiting confirmation</h2><span>{allReviewItems.length}</span></div>{allReviewItems.length ? allReviewItems.map((item) => <article className={`review-card ${item.orphan ? "invalid-review" : ""}`} key={item.id}><div className="review-top"><div className="avatar pending-avatar">{item.orphan ? "!" : "?"}</div><div className="person"><strong>{item.name || "Anonymous"}</strong><span>Building {item.wing || wing} · Flat {item.flat || "Anonymous"} · {item.date || "No date"}</span></div><strong className="review-amount">{money.format(Number(item.amount) || 0)}</strong></div>{item.orphan && <p className="invalid-note">No matching private payment details. Confirm only after checking receipt.</p>}{!item.orphan && <div className="review-meta"><span>{item.mode || "UPI"}</span>{item.remarks && <span>Ref: {item.remarks}</span>}</div>}<div className="review-actions"><button className="approve-payment" onClick={() => approveContribution(item)}>✓ Confirm received</button><button className="delete-invalid-payment" onClick={() => deletePendingContribution(item)}>{item.orphan ? "Delete invalid entry" : "Delete pending entry"}</button></div></article>) : <div className="empty-state"><div>✓</div><strong>All payments reviewed</strong><p>No contribution is waiting for confirmation.</p></div>}</div>}
       {isAdmin && view === "reviews" && orphanPendingContributions.length > 0 && <div className="invalid-payment-panel"><strong>Invalid pending entries</strong><small>These entries have no matching private payment details. Delete them after checking payment was not received.</small>{orphanPendingContributions.map((item) => <button key={item.id} onClick={() => deletePendingContribution(item)}><span>{item.anonymous ? "Anonymous" : `Flat ${item.flat}`} · {money.format(Number(item.amount) || 0)}</span><b>Delete</b></button>)}</div>}
       <div className="list-heading"><h2>{view === "owners" ? `Building ${wing} owners` : view === "reviews" ? "Payments awaiting confirmation" : "Society expense details"}</h2><span>{view === "owners" ? visibleOwners.length : view === "reviews" ? pendingContributions.length : expenseRows.length}</span>{!isAdmin && view === "ledger" && <button className="back-owners" onClick={() => setView("owners")}>Back to owners</button>}</div>
       {loading ? <div className="empty-state">Loading Ganpati register…</div> : view === "owners" ? <div className="contribution-list">{visibleOwners.map((owner) => { const pendingEntry = normalized.some((item) => item.type === "incoming" && item.ownerId === owner.id && item.verificationStatus === "pending"); const status = isAdmin ? (ownerTotals[owner.id] ? "received" : pendingEntry ? "pending" : "none") : (publicStatuses[owner.id] || "none"); return <article className="contribution" key={owner.id}><div className="avatar">{owner.flat.split(" ")[0]}</div><div className="person"><strong>{owner.name}</strong><span>Flat {owner.flat}</span></div><div className="amount">{isAdmin ? <strong>{ownerTotals[owner.id] ? money.format(ownerTotals[owner.id]) : pendingEntry ? "Verify" : "—"}</strong> : <button className="private-lock" onClick={() => setShowPrivacyInfo(true)} aria-label="Private amount">🔒</button>}<small className={status === "received" ? "status-received" : status === "pending" ? "status-pending" : "status-waiting"}>{status === "received" ? "Received" : status === "pending" ? "Pending verification" : "Yet to receive"}</small><button className="edit-owner" onClick={() => startContributionEdit(owner)}>{isAdmin ? (pendingEntry ? "Verify contribution" : ownerTotals[owner.id] ? "Edit contribution" : "Add contribution") : status === "pending" ? "Payment submitted" : "Give contribution"}</button></div></article>})}</div> : view === "reviews" && isAdmin ? (pendingContributions.length ? <div className="contribution-list">{pendingContributions.map((item) => <article className="review-card" key={item.id}><div className="review-top"><div className="avatar pending-avatar">?</div><div className="person"><strong>{item.name || "Resident"}</strong><span>Building {wing} · Flat {item.flat || "—"} · {item.date || "No date"}</span></div><strong className="review-amount">{money.format(Number(item.amount) || 0)}</strong></div><div className="review-meta"><span>{item.mode || "UPI"}</span>{item.remarks && <span>Ref: {item.remarks}</span>}</div><button className="approve-payment" onClick={() => approveContribution(item)}>✓ Confirm received</button></article>)}</div> : <div className="empty-state"><div>✓</div><strong>All payments reviewed</strong><p>No contribution is waiting for confirmation.</p></div>) : expenseRows.length ? <div className="contribution-list">{expenseRows.map((item) => <article className="contribution" key={item.id}><div className="avatar outgoing">↑</div><div className="person"><strong>{item.purpose}</strong><span>Expense · {item.mode || "Mode not set"} · {item.date || "No date"}</span>{item.remarks && <em>{item.remarks}</em>}</div><div className="amount outgoing"><strong>−{money.format(Number(item.amount) || 0)}</strong>{isAdmin && <button className="delete-entry" onClick={() => deleteExpense(item)}>Delete</button>}</div></article>)}</div> : <div className="empty-state"><div>🧾</div><strong>No expenses yet</strong><p>Expense details will appear here.</p></div>}
