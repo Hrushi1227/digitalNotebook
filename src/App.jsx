@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, updateDoc } from "firebase/firestore";
+import { addDoc, collection, deleteDoc, doc, onSnapshot, serverTimestamp, setDoc, updateDoc, writeBatch } from "firebase/firestore";
 import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from "firebase/auth";
 import { jsPDF } from "jspdf";
 import { QRCode } from "antd";
@@ -18,6 +18,7 @@ export default function App() {
   const [view, setView] = useState("owners");
   const [entries, setEntries] = useState([]);
   const [auditEntries, setAuditEntries] = useState([]);
+  const [auditReady, setAuditReady] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
@@ -31,6 +32,7 @@ export default function App() {
   const [publicExpensesB, setPublicExpensesB] = useState([]);
   const [publicPendingItems, setPublicPendingItems] = useState([]);
   const [editingContribution, setEditingContribution] = useState(null);
+  const [editingExpense, setEditingExpense] = useState(null);
   const [contributionEdit, setContributionEdit] = useState({ amount: "", mode: "UPI", date: today(), remarks: "" });
   const [paymentStep, setPaymentStep] = useState(1);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -54,15 +56,21 @@ export default function App() {
   }, [wing, isAdmin]);
 
   useEffect(() => {
-    if (!isAdmin) { setAuditEntries([]); return undefined; }
+    if (!isAdmin) { setAuditEntries([]); setAuditReady(false); return undefined; }
+    setAuditReady(false);
     let buildingA = []; let buildingB = [];
-    const updateAuditEntries = () => setAuditEntries([...buildingA, ...buildingB]);
-    const stopA = onSnapshot(collection(db, COLLECTIONS.A), (snapshot) => { buildingA = snapshot.docs.map((item) => ({ id: item.id, wing: "A", ...item.data() })); updateAuditEntries(); }, () => setError("Building A audit data could not be loaded."));
-    const stopB = onSnapshot(collection(db, COLLECTIONS.B), (snapshot) => { buildingB = snapshot.docs.map((item) => ({ id: item.id, wing: "B", ...item.data() })); updateAuditEntries(); }, () => setError("Building B audit data could not be loaded."));
+    let loadedA = false; let loadedB = false;
+    const updateAuditEntries = () => { setAuditEntries([...buildingA, ...buildingB]); setAuditReady(loadedA && loadedB); };
+    const stopA = onSnapshot(collection(db, COLLECTIONS.A), (snapshot) => { buildingA = snapshot.docs.map((item) => ({ id: item.id, wing: "A", ...item.data() })); loadedA = true; updateAuditEntries(); }, () => { setAuditReady(false); setError("Building A audit data could not be loaded."); });
+    const stopB = onSnapshot(collection(db, COLLECTIONS.B), (snapshot) => { buildingB = snapshot.docs.map((item) => ({ id: item.id, wing: "B", ...item.data() })); loadedB = true; updateAuditEntries(); }, () => { setAuditReady(false); setError("Building B audit data could not be loaded."); });
     return () => { stopA(); stopB(); };
   }, [isAdmin]);
 
-  useEffect(() => onAuthStateChanged(auth, (user) => setIsAdmin(Boolean(user))), []);
+  useEffect(() => onAuthStateChanged(auth, (user) => {
+    const allowed = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+    setIsAdmin(allowed);
+    if (user && !allowed) signOut(auth).catch(() => {});
+  }), []);
 
   useEffect(() => onSnapshot(collection(db, `ganpati_public_status_${wing.toLowerCase()}`), (snapshot) => {
     const statuses = {};
@@ -142,6 +150,7 @@ export default function App() {
   const visibleLedger = normalized.filter((item) => item.type === "outgoing").sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).filter((item) => `${item.purpose || ""} ${item.remarks || ""}`.toLowerCase().includes(q));
   const visiblePublicExpenses = [...publicExpensesA, ...publicExpensesB].sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).filter((item) => `${item.purpose || ""} ${item.remarks || ""} ${item.wing || ""}`.toLowerCase().includes(q));
   const expenseRows = isAdmin ? visibleLedger : visiblePublicExpenses;
+  const contributionRows = normalized.filter((item) => item.type === "incoming").sort((a, b) => String(b.date || "").localeCompare(String(a.date || ""))).filter((item) => `${item.name || ""} ${item.flat || ""} ${item.amount || ""} ${item.remarks || ""}`.toLowerCase().includes(q));
   const privatePendingContributions = normalized.filter((item) => item.type === "incoming" && item.verificationStatus === "pending");
   const unmatchedPublicPending = publicPendingItems.filter((item) => item.wing === wing && !privatePendingContributions.some((entry) => entry.id === item.id));
   const unmatchedPendingOwners = owners.filter((owner) => publicStatuses[owner.id] === "pending" && !privatePendingContributions.some((entry) => entry.ownerId === owner.id));
@@ -167,6 +176,8 @@ export default function App() {
   }
   async function adminLogout() { await signOut(auth); setView("owners"); setShowForm(false); setEditingContribution(null); }
   function startContributionEdit(owner) {
+    if (!isAdmin && publicStatuses[owner.id] === "pending") { setError("A payment for this flat is already awaiting admin review."); return; }
+    if (!isAdmin && publicStatuses[owner.id] === "received") { setError("A confirmed contribution is already recorded for this flat. Contact the Breeza admin for corrections."); return; }
     const existing = normalized.filter((item) => item.type === "incoming" && item.ownerId === owner.id);
     const latest = existing[0];
     setEditingContribution({ owner, existing: latest || null });
@@ -186,12 +197,18 @@ export default function App() {
       const isAnonymous = Boolean(editingContribution.owner.anonymous);
       const payload = { type: "incoming", ownerId: isAnonymous ? null : editingContribution.owner.id, name: isAnonymous ? "Anonymous" : editingContribution.owner.name, flat: isAnonymous ? "Anonymous" : editingContribution.owner.flat, anonymous: isAnonymous, amount: Number(contributionEdit.amount), mode: isAdmin ? contributionEdit.mode : "UPI", date: contributionEdit.date, remarks: contributionEdit.remarks.trim(), verificationStatus: isAdmin ? "verified" : "pending", wing, updatedAt: serverTimestamp() };
       let contributionRef;
-      if (editingContribution.existing) {
-        contributionRef = doc(db, COLLECTIONS[wing], editingContribution.existing.id);
-        await updateDoc(contributionRef, payload);
-      } else contributionRef = await addDoc(collection(db, COLLECTIONS[wing]), { ...payload, createdAt: serverTimestamp() });
-      if (!isAdmin) await setDoc(doc(db, "ganpati_public_pending", contributionRef.id), { amount: Number(contributionEdit.amount), wing, pending: true, anonymous: isAnonymous, createdAt: serverTimestamp() });
-      if (!isAnonymous) await setDoc(doc(db, `ganpati_public_status_${wing.toLowerCase()}`, encodeURIComponent(editingContribution.owner.id)), { ownerId: editingContribution.owner.id, received: isAdmin && Number(contributionEdit.amount) > 0, pending: !isAdmin && Number(contributionEdit.amount) > 0, lowAmount: Number(contributionEdit.amount) < 100, updatedAt: serverTimestamp() });
+      if (!isAdmin) {
+        contributionRef = doc(collection(db, COLLECTIONS[wing]));
+        const batch = writeBatch(db);
+        batch.set(contributionRef, { ...payload, createdAt: serverTimestamp() });
+        batch.set(doc(db, "ganpati_public_pending", contributionRef.id), { amount: Number(contributionEdit.amount), wing, pending: true, anonymous: isAnonymous, createdAt: serverTimestamp() });
+        if (!isAnonymous) batch.set(doc(db, `ganpati_public_status_${wing.toLowerCase()}`, encodeURIComponent(editingContribution.owner.id)), { ownerId: editingContribution.owner.id, received: false, pending: true, lowAmount: Number(contributionEdit.amount) < 100, updatedAt: serverTimestamp() });
+        await batch.commit();
+      } else {
+        if (editingContribution.existing) { contributionRef = doc(db, COLLECTIONS[wing], editingContribution.existing.id); await updateDoc(contributionRef, payload); }
+        else contributionRef = await addDoc(collection(db, COLLECTIONS[wing]), { ...payload, createdAt: serverTimestamp() });
+        if (!isAnonymous) await setDoc(doc(db, `ganpati_public_status_${wing.toLowerCase()}`, encodeURIComponent(editingContribution.owner.id)), { ownerId: editingContribution.owner.id, received: true, pending: false, lowAmount: Number(contributionEdit.amount) < 100, updatedAt: serverTimestamp() });
+      }
       if (isAdmin) setEditingContribution(null);
       else {
         const paymentUrl = contributionPaymentLink;
@@ -217,6 +234,25 @@ export default function App() {
     try { await deleteDoc(doc(db, COLLECTIONS[wing], item.id)); await deleteDoc(doc(db, `ganpati_public_expenses_${wing.toLowerCase()}`, item.id)); }
     catch { setError("Expense could not be deleted. Please try again."); }
   }
+  function startExpenseEdit(item) {
+    if (!isAdmin) return;
+    setEditingExpense({ ...item, purpose: item.purpose || "", amount: String(item.amount || ""), mode: item.mode || "Other", date: item.date || today(), remarks: item.remarks || "" });
+  }
+  async function saveExpenseEdit(event) {
+    event.preventDefault();
+    if (!isAdmin || !editingExpense || Number(editingExpense.amount) <= 0 || !editingExpense.purpose.trim()) return;
+    setSaving(true); setError("");
+    try {
+      const expenseWing = editingExpense.wing || wing;
+      const payload = { type: "outgoing", purpose: editingExpense.purpose.trim(), amount: Number(editingExpense.amount), mode: editingExpense.mode, date: editingExpense.date, remarks: editingExpense.remarks.trim(), wing: expenseWing, updatedAt: serverTimestamp() };
+      const batch = writeBatch(db);
+      batch.update(doc(db, COLLECTIONS[expenseWing], editingExpense.id), payload);
+      batch.set(doc(db, `ganpati_public_expenses_${expenseWing.toLowerCase()}`, editingExpense.id), { purpose: payload.purpose, amount: payload.amount, mode: payload.mode, date: payload.date, remarks: payload.remarks, updatedAt: serverTimestamp() });
+      await batch.commit();
+      setEditingExpense(null);
+    } catch { setError("Expense could not be updated. Please try again."); }
+    finally { setSaving(false); }
+  }
   async function approveContribution(item) {
     if (!isAdmin || !window.confirm(`Confirm receipt of ${money.format(Number(item.amount) || 0)} from Flat ${item.flat}?`)) return;
     try {
@@ -241,6 +277,20 @@ export default function App() {
         await setDoc(doc(db, `ganpati_public_status_${wing.toLowerCase()}`, encodeURIComponent(item.ownerId)), { ownerId: item.ownerId, received: otherItems.some((entry) => entry.verificationStatus !== "pending"), pending: otherItems.some((entry) => entry.verificationStatus === "pending"), updatedAt: serverTimestamp() });
       }
     } catch { setError("Pending payment could not be deleted. Please try again."); }
+  }
+  async function deleteLedgerContribution(item) {
+    if (!isAdmin || !window.confirm(`Delete this ${item.verificationStatus === "pending" ? "pending" : "confirmed"} contribution of ${money.format(Number(item.amount) || 0)}? This cannot be undone.`)) return;
+    try {
+      await deleteDoc(doc(db, COLLECTIONS[item.wing || wing], item.id));
+      await deleteDoc(doc(db, "ganpati_public_pending", item.id));
+      if (item.ownerId) {
+        const remaining = normalized.filter((entry) => entry.id !== item.id && entry.type === "incoming" && entry.ownerId === item.ownerId);
+        const received = remaining.some((entry) => entry.verificationStatus !== "pending");
+        const pending = !received && remaining.some((entry) => entry.verificationStatus === "pending");
+        const total = remaining.reduce((sum, entry) => sum + (Number(entry.amount) || 0), 0);
+        await setDoc(doc(db, `ganpati_public_status_${(item.wing || wing).toLowerCase()}`, encodeURIComponent(item.ownerId)), { ownerId: item.ownerId, received, pending, lowAmount: total > 0 && total < 100, updatedAt: serverTimestamp() });
+      }
+    } catch { setError("Contribution entry could not be deleted. Please try again."); }
   }
   async function saveTransaction(event) {
     event.preventDefault(); setError("");
@@ -379,14 +429,14 @@ export default function App() {
     <header className="hero"><button className="admin-access" onClick={() => isAdmin ? adminLogout() : setShowLogin(true)}>{isAdmin ? "Exit admin" : "🔒 Admin"}</button><div className="hero-glow"/><div className="ganpati-mark">ॐ</div><p className="eyebrow">Breeza Society</p><h1>Ganpati Utsav 2026</h1><p className="blessing">गणपती बाप्पा मोरया</p><p className="creator-credit">Created by Rushikesh Ghatol · A-1302</p>
       <div className="upi-card hero-upi"><div className="upi-copy"><span>Ganpati contribution UPI</span><div className="upi-id-row"><strong>{UPI_ID}</strong><button onClick={copyUpiId} aria-label="Copy UPI ID">{copiedUpi ? "✓ Copied" : "⧉ Copy"}</button></div></div><div className="qr-frame"><QRCode value={UPI_LINK} size={156} type="svg" bordered={false} errorLevel="H"/></div><div className="upi-actions"><div><strong>Scan to contribute</strong><span>Use any UPI app</span></div><a href={UPI_LINK}>Pay via UPI</a></div></div>
     </header>
-    <section className={`content ${view === "reviews" ? "review-mode" : ""} ${view === "owners" ? "owners-mode" : ""}`}>
+    <section className={`content ${view === "reviews" ? "review-mode" : ""} ${view === "owners" ? "owners-mode" : ""} ${view === "contributions" ? "contributions-mode" : ""} ${isAdmin && view === "ledger" ? "admin-expenses-mode" : ""}`}>
       <div className="wing-switch">{["A","B"].map((item) => <button key={item} className={wing === item ? "active" : ""} onClick={() => { setWing(item); setForm(emptyForm); }}>Building {item}</button>)}</div>
-      {isAdmin ? <div className="admin-banner"><span>Admin view · Financial details unlocked</span><div className="admin-exports"><button onClick={downloadAuditPdf}>↓ Audit PDF</button><button onClick={downloadPendingOwnersPdf}>↓ Pending owners</button></div></div> : <div className="privacy-note"><span>🔒</span><div><strong>Personal contributions are private</strong><p>Only combined society totals are public.</p></div></div>}
+      {isAdmin ? <div className="admin-banner"><span>Admin view · Financial details unlocked</span><div className="admin-exports"><button onClick={downloadAuditPdf} disabled={!auditReady}>{auditReady ? "↓ Audit PDF" : "Loading audit…"}</button><button onClick={downloadPendingOwnersPdf}>↓ Pending owners</button></div></div> : <div className="privacy-note"><span>🔒</span><div><strong>Personal contributions are private</strong><p>Only combined society totals are public.</p></div></div>}
       <div className="combined-label">Combined society totals · Building A + B</div><div className="money-grid public-totals"><div className="money-card received"><span>Received</span><strong>{money.format(Number(publicSummary.received) || 0)}</strong><button className="tile-view" onClick={() => isAdmin ? setView("owners") : setShowLogin(true)}>View</button></div><div className="money-card spent"><span>Spent</span><strong>{money.format(Number(publicSummary.spent) || 0)}</strong><button className="tile-view" onClick={() => setView("ledger")}>View expenses</button></div><div className="money-card pending-total"><span>Pending review</span><strong>{money.format(Number(publicSummary.pendingReview) || 0)}</strong><button className="tile-view" onClick={() => isAdmin ? setView("reviews") : setShowLogin(true)}>{isAdmin ? `Review Building ${wing}` : "View"}</button></div><div className="money-card balance"><span>Balance</span><strong>{money.format(Number(publicSummary.balance) || 0)}</strong></div></div>
       <div className="section-balances"><div><span>Building A</span><strong>{money.format(wingSummaries.A.received - wingSummaries.A.spent)}</strong></div><div><span>Building B</span><strong>{money.format(wingSummaries.B.received - wingSummaries.B.spent)}</strong></div><div className="combined"><span>Combined A + B</span><strong>{money.format(Number(publicSummary.balance) || 0)}</strong></div></div>
       {!isAdmin && <button className="anonymous-contribution" onClick={startAnonymousContribution}><span>Anonymous contribution</span><small>Contribute without displaying your name or flat</small></button>}
-      {isAdmin && <div className="view-tabs"><button className={view === "owners" ? "active" : ""} onClick={() => setView("owners")}>Owners</button><button className={view === "reviews" ? "active" : ""} onClick={() => setView("reviews")}>To review {pendingContributions.length ? `(${pendingContributions.length})` : ""}</button><button className={view === "ledger" ? "active" : ""} onClick={() => setView("ledger")}>Expenses</button></div>}
-      <div className="toolbar"><label className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={view === "owners" ? "Search owner or flat" : view === "reviews" ? "Search pending payments" : "Search expenses"}/></label>{isAdmin && view !== "reviews" && <button className="add-button" onClick={() => setShowForm(!showForm)}>{showForm ? "Close" : "+ Entry"}</button>}</div>
+      {isAdmin && <div className="view-tabs"><button className={view === "owners" ? "active" : ""} onClick={() => setView("owners")}>Owners</button><button className={view === "reviews" ? "active" : ""} onClick={() => setView("reviews")}>To review {allReviewItems.length ? `(${allReviewItems.length})` : ""}</button><button className={view === "contributions" ? "active" : ""} onClick={() => setView("contributions")}>Transactions</button><button className={view === "ledger" ? "active" : ""} onClick={() => setView("ledger")}>Expenses</button></div>}
+      <div className="toolbar"><label className="search-box"><span>⌕</span><input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={view === "owners" ? "Search owner or flat" : view === "reviews" ? "Search pending payments" : view === "contributions" ? "Search contribution transactions" : "Search expenses"}/></label>{isAdmin && view !== "reviews" && view !== "contributions" && <button className="add-button" onClick={() => setShowForm(!showForm)}>{showForm ? "Close" : "+ Entry"}</button>}</div>
       {isAdmin && showForm && <form className="entry-form" onSubmit={saveTransaction}>
         <div className="type-switch"><button type="button" className={form.type === "incoming" ? "active incoming" : ""} onClick={() => changeType("incoming")}>↓ Money in</button><button type="button" className={form.type === "outgoing" ? "active outgoing" : ""} onClick={() => changeType("outgoing")}>↑ Expense</button></div>
         {form.type === "incoming" ? <>
@@ -400,12 +450,15 @@ export default function App() {
       {error && <p className="error-message">{error}</p>}
       {view === "owners" && lowOwnerIndexes.length > 0 && <style>{lowOwnerIndexes.map((index) => `.owners-mode .contribution-list>.contribution:nth-child(${index}){border-color:#e09a24;background:#fff6d8;box-shadow:0 0 0 2px #f6c65a55}`).join("")}</style>}
       {isAdmin && view === "reviews" && <div className="unified-reviews"><div className="unified-review-heading"><h2>Payments awaiting confirmation</h2><span>{allReviewItems.length}</span></div>{allReviewItems.length ? allReviewItems.map((item) => <article className={`review-card ${item.orphan ? "invalid-review" : ""}`} key={item.id}><div className="review-top"><div className="avatar pending-avatar">{item.orphan ? "!" : "?"}</div><div className="person"><strong>{item.name || "Anonymous"}</strong><span>Building {item.wing || wing} · Flat {item.flat || "Anonymous"} · {item.date || "No date"}</span></div><strong className="review-amount">{money.format(Number(item.amount) || 0)}</strong></div>{item.orphan && <p className="invalid-note">No matching private payment details. Confirm only after checking receipt.</p>}{!item.orphan && <div className="review-meta"><span>{item.mode || "UPI"}</span>{item.remarks && <span>Ref: {item.remarks}</span>}</div>}<div className="review-actions"><button className="approve-payment" onClick={() => approveContribution(item)}>✓ Confirm received</button><button className="delete-invalid-payment" onClick={() => deletePendingContribution(item)}>{item.orphan ? "Delete invalid entry" : "Delete pending entry"}</button></div></article>) : <div className="empty-state"><div>✓</div><strong>All payments reviewed</strong><p>No contribution is waiting for confirmation.</p></div>}</div>}
+      {isAdmin && view === "contributions" && <div className="unified-reviews"><div className="unified-review-heading"><h2>All contribution transactions</h2><span>{contributionRows.length}</span></div>{contributionRows.length ? contributionRows.map((item) => <article className="review-card" key={item.id}><div className="review-top"><div className="avatar pending-avatar">{item.anonymous ? "A" : item.flat || "?"}</div><div className="person"><strong>{item.name || "Anonymous"}</strong><span>Building {item.wing || wing} · Flat {item.flat || "Anonymous"} · {item.date || "No date"}</span></div><strong className="review-amount">{money.format(Number(item.amount) || 0)}</strong></div><div className="review-meta"><span>{item.verificationStatus === "pending" ? "Pending review" : "Received"}</span><span>{item.mode || "Other"}</span>{item.remarks && <span>{item.remarks}</span>}</div><button className="delete-invalid-payment" onClick={() => deleteLedgerContribution(item)}>Delete contribution entry</button></article>) : <div className="empty-state"><strong>No contribution transactions</strong></div>}</div>}
+      {isAdmin && view === "ledger" && <div className="unified-reviews"><div className="unified-review-heading"><h2>Building {wing} expenses</h2><span>{expenseRows.length}</span></div>{expenseRows.length ? expenseRows.map((item) => <article className="review-card" key={item.id}><div className="review-top"><div className="avatar outgoing">↑</div><div className="person"><strong>{item.purpose}</strong><span>{item.mode || "Other"} · {item.date || "No date"}</span></div><strong className="review-amount">−{money.format(Number(item.amount) || 0)}</strong></div>{item.remarks && <div className="review-meta"><span>{item.remarks}</span></div>}<div className="expense-actions"><button onClick={() => startExpenseEdit(item)}>Edit expense</button><button onClick={() => deleteExpense(item)}>Delete expense</button></div></article>) : <div className="empty-state"><strong>No expenses yet</strong></div>}</div>}
       {isAdmin && view === "reviews" && orphanPendingContributions.length > 0 && <div className="invalid-payment-panel"><strong>Invalid pending entries</strong><small>These entries have no matching private payment details. Delete them after checking payment was not received.</small>{orphanPendingContributions.map((item) => <button key={item.id} onClick={() => deletePendingContribution(item)}><span>{item.anonymous ? "Anonymous" : `Flat ${item.flat}`} · {money.format(Number(item.amount) || 0)}</span><b>Delete</b></button>)}</div>}
       <div className="list-heading"><h2>{view === "owners" ? `Building ${wing} owners` : view === "reviews" ? "Payments awaiting confirmation" : "Society expense details"}</h2><span>{view === "owners" ? visibleOwners.length : view === "reviews" ? pendingContributions.length : expenseRows.length}</span>{!isAdmin && view === "ledger" && <button className="back-owners" onClick={() => setView("owners")}>Back to owners</button>}</div>
       {loading ? <div className="empty-state">Loading Ganpati register…</div> : view === "owners" ? <div className="contribution-list">{visibleOwners.map((owner) => { const pendingEntry = normalized.some((item) => item.type === "incoming" && item.ownerId === owner.id && item.verificationStatus === "pending"); const status = isAdmin ? (ownerTotals[owner.id] ? "received" : pendingEntry ? "pending" : "none") : (publicStatuses[owner.id] || "none"); return <article className="contribution" key={owner.id}><div className="avatar">{owner.flat.split(" ")[0]}</div><div className="person"><strong>{owner.name}</strong><span>Flat {owner.flat}</span></div><div className="amount">{isAdmin ? <strong>{ownerTotals[owner.id] ? money.format(ownerTotals[owner.id]) : pendingEntry ? "Verify" : "—"}</strong> : <button className="private-lock" onClick={() => setShowPrivacyInfo(true)} aria-label="Private amount">🔒</button>}<small className={status === "received" ? "status-received" : status === "pending" ? "status-pending" : "status-waiting"}>{status === "received" ? "Received" : status === "pending" ? "Pending verification" : "Yet to receive"}</small><button className="edit-owner" onClick={() => startContributionEdit(owner)}>{isAdmin ? (pendingEntry ? "Verify contribution" : ownerTotals[owner.id] ? "Edit contribution" : "Add contribution") : status === "pending" ? "Payment submitted" : "Give contribution"}</button></div></article>})}</div> : view === "reviews" && isAdmin ? (pendingContributions.length ? <div className="contribution-list">{pendingContributions.map((item) => <article className="review-card" key={item.id}><div className="review-top"><div className="avatar pending-avatar">?</div><div className="person"><strong>{item.name || "Resident"}</strong><span>Building {wing} · Flat {item.flat || "—"} · {item.date || "No date"}</span></div><strong className="review-amount">{money.format(Number(item.amount) || 0)}</strong></div><div className="review-meta"><span>{item.mode || "UPI"}</span>{item.remarks && <span>Ref: {item.remarks}</span>}</div><button className="approve-payment" onClick={() => approveContribution(item)}>✓ Confirm received</button></article>)}</div> : <div className="empty-state"><div>✓</div><strong>All payments reviewed</strong><p>No contribution is waiting for confirmation.</p></div>) : expenseRows.length ? <div className="contribution-list">{expenseRows.map((item) => <article className="contribution" key={item.id}><div className="avatar outgoing">↑</div><div className="person"><strong>{item.purpose}</strong><span>Expense · {item.mode || "Mode not set"} · {item.date || "No date"}</span>{item.remarks && <em>{item.remarks}</em>}</div><div className="amount outgoing"><strong>−{money.format(Number(item.amount) || 0)}</strong>{isAdmin && <button className="delete-entry" onClick={() => deleteExpense(item)}>Delete</button>}</div></article>)}</div> : <div className="empty-state"><div>🧾</div><strong>No expenses yet</strong><p>Expense details will appear here.</p></div>}
     </section><footer><span>Ganpati-only account · Breeza Society</span><strong>Created by Rushikesh Ghatol · A-1302</strong></footer>
     {showLogin && <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setShowLogin(false)}><form className="login-modal" onSubmit={adminLogin}><button type="button" className="modal-close" onClick={() => setShowLogin(false)}>×</button><div className="lock-icon">🔐</div><h2>Admin access</h2><p>Enter the administrator password to view contributions and expenses.</p><label>Password<div className="password-field"><input autoFocus required type={showPassword ? "text" : "password"} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Enter admin password"/><button type="button" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? "Hide password" : "Show password"}>{showPassword ? "🙈" : "👁"}</button></div></label>{loginError && <span className="login-error">{loginError}</span>}<button className="unlock-button">Secure sign in</button></form></div>}
     {editingContribution && <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setEditingContribution(null)}><form className="login-modal contribution-modal" onSubmit={saveContributionEdit}><button type="button" className="modal-close" onClick={() => setEditingContribution(null)}>×</button><p className="modal-kicker">Building {wing} · Flat {editingContribution.owner.flat}</p><h2>{isAdmin ? (editingContribution.existing?.verificationStatus === "pending" ? "Verify contribution" : "Manual contribution") : paymentStep === 1 ? "Enter contribution" : "Complete payment"}</h2><p className="frozen-owner">{editingContribution.owner.name}</p>{isAdmin ? <><small>Check the payment record before confirming it as Received.</small><div className="payment-step"><b>1</b><span><strong>Enter or verify payment details</strong><small>Manual entry is restricted to the administrator.</small></span></div><label>Amount<input autoFocus required type="number" min="1" inputMode="numeric" value={contributionEdit.amount} onChange={(e) => setContributionEdit({ ...contributionEdit, amount: e.target.value })} placeholder="₹ 0"/></label><div className="form-row"><label>Payment mode<select value={contributionEdit.mode} onChange={(e) => setContributionEdit({ ...contributionEdit, mode: e.target.value })}><option>UPI</option><option>Cash</option><option>Bank transfer</option><option>Other</option></select></label><label>Payment date<input required type="date" value={contributionEdit.date} onChange={(e) => setContributionEdit({ ...contributionEdit, date: e.target.value })}/></label></div><label>Transaction reference / remarks<input value={contributionEdit.remarks} onChange={(e) => setContributionEdit({ ...contributionEdit, remarks: e.target.value })} placeholder="Optional transaction reference or note"/></label><button className="unlock-button" disabled={saving}>{saving ? "Saving…" : "Confirm received & save"}</button>{editingContribution.existing && <button type="button" className="delete-contribution" onClick={deleteContribution} disabled={saving}>Delete incorrect entry</button>}</> : paymentStep === 1 ? <><small>First save your amount. It will remain Pending until Breeza admin verifies the actual payment.</small><div className="payment-step"><b>1</b><span><strong>Enter contribution amount</strong><small>No payment is claimed at this stage.</small></span></div><label>Amount<input autoFocus required type="number" min="1" inputMode="numeric" value={contributionEdit.amount} onChange={(e) => setContributionEdit({ ...contributionEdit, amount: e.target.value })} placeholder="₹ 0"/></label><button className="unlock-button" disabled={saving}>{saving ? "Saving pending entry…" : "Continue to payment"}</button></> : <><div className="pending-saved">✓ Amount saved as Pending review</div><div className="payment-step"><b>2</b><span><strong>Pay using UPI</strong><small>Scan QR, tap Pay now, or copy the UPI ID.</small></span></div><div className="modal-payment"><div className="mini-qr"><QRCode value={contributionPaymentLink} size={132} type="svg" bordered={false} errorLevel="H"/></div><div><strong>{money.format(Number(contributionEdit.amount) || 0)}</strong><span>{UPI_ID}</span><div className="pay-actions"><a href={contributionPaymentLink}>Pay now</a><button type="button" onClick={copyUpiId}>{copiedUpi ? "Copied ✓" : "Copy UPI"}</button></div><small>Breeza admin will verify receipt before marking Received.</small></div></div><button type="button" className="unlock-button" onClick={() => setEditingContribution(null)}>Done / Close</button></>}</form></div>}
+    {editingExpense && <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setEditingExpense(null)}><form className="login-modal contribution-modal" onSubmit={saveExpenseEdit}><button type="button" className="modal-close" onClick={() => setEditingExpense(null)}>×</button><p className="modal-kicker">Building {editingExpense.wing || wing}</p><h2>Edit expense</h2><label>Purpose<input autoFocus required value={editingExpense.purpose} onChange={(e) => setEditingExpense({ ...editingExpense, purpose: e.target.value })}/></label><label>Amount<input required type="number" min="1" inputMode="numeric" value={editingExpense.amount} onChange={(e) => setEditingExpense({ ...editingExpense, amount: e.target.value })}/></label><div className="form-row"><label>Payment mode<select value={editingExpense.mode} onChange={(e) => setEditingExpense({ ...editingExpense, mode: e.target.value })}><option>UPI</option><option>Cash</option><option>Bank transfer</option><option>Other</option></select></label><label>Date<input required type="date" value={editingExpense.date} onChange={(e) => setEditingExpense({ ...editingExpense, date: e.target.value })}/></label></div><label>Remarks<input value={editingExpense.remarks} onChange={(e) => setEditingExpense({ ...editingExpense, remarks: e.target.value })} placeholder="Optional note"/></label><button className="unlock-button" disabled={saving}>{saving ? "Saving…" : "Save expense changes"}</button></form></div>}
     {showPrivacyInfo && <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && setShowPrivacyInfo(false)}><div className="login-modal privacy-modal"><button className="modal-close" onClick={() => setShowPrivacyInfo(false)}>×</button><div className="lock-icon">🔒</div><h2>Private contribution</h2><p>Contribution amounts and expense details can only be viewed by the Ganpati administrator.</p><button className="unlock-button" onClick={() => { setShowPrivacyInfo(false); setShowLogin(true); }}>Admin sign in</button></div></div>}
   </main>;
 }

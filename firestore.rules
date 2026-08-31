@@ -1,23 +1,29 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /ganpati_public_status_a/{document} { allow read: if true; allow create, update: if request.auth != null || (request.resource.data.received == false && request.resource.data.pending == true && request.resource.data.ownerId is string && request.resource.data.lowAmount is bool); }
-    match /ganpati_public_status_b/{document} { allow read: if true; allow create, update: if request.auth != null || (request.resource.data.received == false && request.resource.data.pending == true && request.resource.data.ownerId is string && request.resource.data.lowAmount is bool); }
-    match /ganpati_public_summary/{document} { allow read: if true; allow write: if request.auth != null; }
+    function isAdmin() { return request.auth != null && request.auth.token.email == 'breezasociety2026@gmail.com'; }
+    function validPublicStatus() { return request.resource.data.received == false && request.resource.data.pending == true && request.resource.data.ownerId is string && request.resource.data.lowAmount is bool; }
+    function matchingPendingLedger(document) {
+      return (request.resource.data.wing == 'A' && existsAfter(/databases/$(database)/documents/ganpati_collection_a/$(document)) && getAfter(/databases/$(database)/documents/ganpati_collection_a/$(document)).data.amount == request.resource.data.amount && getAfter(/databases/$(database)/documents/ganpati_collection_a/$(document)).data.verificationStatus == 'pending')
+        || (request.resource.data.wing == 'B' && existsAfter(/databases/$(database)/documents/ganpati_collection_b/$(document)) && getAfter(/databases/$(database)/documents/ganpati_collection_b/$(document)).data.amount == request.resource.data.amount && getAfter(/databases/$(database)/documents/ganpati_collection_b/$(document)).data.verificationStatus == 'pending');
+    }
+    match /ganpati_public_status_a/{document} { allow read: if true; allow create: if isAdmin() || validPublicStatus(); allow update, delete: if isAdmin(); }
+    match /ganpati_public_status_b/{document} { allow read: if true; allow create: if isAdmin() || validPublicStatus(); allow update, delete: if isAdmin(); }
+    match /ganpati_public_summary/{document} { allow read: if true; allow write: if isAdmin(); }
     match /ganpati_public_pending/{document} {
       allow read: if true;
-      allow create: if request.auth != null || (request.resource.data.amount is number && request.resource.data.amount > 0 && request.resource.data.pending == true && (request.resource.data.wing == 'A' || request.resource.data.wing == 'B'));
-      allow update, delete: if request.auth != null;
+      allow create: if isAdmin() || (request.resource.data.amount is number && request.resource.data.amount > 0 && request.resource.data.pending == true && request.resource.data.anonymous is bool && matchingPendingLedger(document));
+      allow update, delete: if isAdmin();
     }
-    match /ganpati_public_expenses_a/{document} { allow read: if true; allow write: if request.auth != null; }
-    match /ganpati_public_expenses_b/{document} { allow read: if true; allow write: if request.auth != null; }
+    match /ganpati_public_expenses_a/{document} { allow read: if true; allow write: if isAdmin(); }
+    match /ganpati_public_expenses_b/{document} { allow read: if true; allow write: if isAdmin(); }
     match /ganpati_collection_a/{document} {
-      allow read, update, delete: if request.auth != null;
-      allow create: if request.auth != null || (request.resource.data.type == 'incoming' && request.resource.data.wing == 'A' && request.resource.data.verificationStatus == 'pending' && request.resource.data.amount is number && request.resource.data.amount > 0 && (request.resource.data.ownerId is string || (request.resource.data.ownerId == null && request.resource.data.anonymous == true)));
+      allow read, update, delete: if isAdmin();
+      allow create: if isAdmin() || (request.resource.data.type == 'incoming' && request.resource.data.wing == 'A' && request.resource.data.verificationStatus == 'pending' && request.resource.data.amount is number && request.resource.data.amount > 0 && request.resource.data.anonymous is bool && (request.resource.data.ownerId is string || (request.resource.data.ownerId == null && request.resource.data.anonymous == true)));
     }
     match /ganpati_collection_b/{document} {
-      allow read, update, delete: if request.auth != null;
-      allow create: if request.auth != null || (request.resource.data.type == 'incoming' && request.resource.data.wing == 'B' && request.resource.data.verificationStatus == 'pending' && request.resource.data.amount is number && request.resource.data.amount > 0 && (request.resource.data.ownerId is string || (request.resource.data.ownerId == null && request.resource.data.anonymous == true)));
+      allow read, update, delete: if isAdmin();
+      allow create: if isAdmin() || (request.resource.data.type == 'incoming' && request.resource.data.wing == 'B' && request.resource.data.verificationStatus == 'pending' && request.resource.data.amount is number && request.resource.data.amount > 0 && request.resource.data.anonymous is bool && (request.resource.data.ownerId is string || (request.resource.data.ownerId == null && request.resource.data.anonymous == true)));
     }
     match /{document=**} { allow read, write: if false; }
   }
