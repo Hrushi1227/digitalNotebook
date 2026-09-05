@@ -5,7 +5,7 @@ import { jsPDF } from "jspdf";
 import { QRCode } from "antd";
 import { auth, db } from "./firebase";
 import { ownersFor } from "./data/ganpatiOwners";
-import { downloadAuditExcel } from "./utils/ganpatiExport";
+import { createAuditPdf } from "./utils/ganpatiPdf";
 import { ledgerTotals, combinedTotals } from "./utils/ganpatiTotals";
 
 const COLLECTIONS = { A: "ganpati_collection_a", B: "ganpati_collection_b" };
@@ -331,90 +331,9 @@ export default function App() {
     finally { setSaving(false); }
   }
 
-  function downloadAuditPdf(report = "collections") {
+  function downloadAuditPdf(report = "audit") {
     if (!isAdmin || !auditReady) return;
-    const auditA = ledgerTotals(auditEntries.filter((item) => item.wing === "A"));
-    const auditB = ledgerTotals(auditEntries.filter((item) => item.wing === "B"));
-    const auditSummary = combinedTotals({ A: auditA, B: auditB });
-    const combinedEntries = auditEntries.map((item) => ({ ...item, type: item.type || "incoming" }));
-    const contributions = combinedEntries.filter((item) => item.type === "incoming" && item.verificationStatus !== "pending" && Number(item.amount) > 0);
-    const expenses = combinedEntries.filter((item) => item.type === "outgoing" && Number(item.amount) > 0);
-    const auditRows = (report === "expenses" ? expenses : contributions).sort((a, b) => String(a.date || "").localeCompare(String(b.date || "")) || String(a.flat || "").localeCompare(String(b.flat || ""), undefined, { numeric: true }));
-    const auditReceived = contributions.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-    const auditSpent = expenses.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-    const auditPending = combinedEntries.filter((item) => item.type === "incoming" && item.verificationStatus === "pending").reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-    const pdf = new jsPDF({ unit: "mm", format: "a4" });
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const margin = 14;
-    const columns = [margin, 23, 48, 106, 127, 149, 171];
-    const widths = [9, 25, 58, 21, 22, 22, 25];
-    let reportBuilding = "A";
-    let page = 1;
-    let y = 0;
-
-    const drawHeader = () => {
-      pdf.setFillColor(154, 49, 27);
-      pdf.rect(0, 0, pageWidth, 29, "F");
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(16);
-      pdf.text("Breeza Society - Ganpati Utsav 2026", margin, 12);
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(9);
-      pdf.text(report === "expenses" ? `Building A + B - Expenses Report | Building ${reportBuilding}` : `Building A + B - Collection Audit | Building ${reportBuilding}`, margin, 19);
-      pdf.text(`Generated: ${new Date().toLocaleString("en-IN")}`, margin, 24);
-      pdf.setTextColor(50, 36, 28);
-      const summaryCells = [
-        ["Received", auditSummary.received], ["Spent", auditSummary.spent], ["Pending review", auditA.pendingReview + auditB.pendingReview],
-        ["Building A received", auditA.received], ["Building B received", auditB.received], ["Combined A + B received", auditSummary.received],
-      ];
-      const summaryWidth = (pageWidth - margin * 2) / 3;
-      summaryCells.forEach(([label, value], index) => {
-        const col = index % 3; const row = Math.floor(index / 3); const x = margin + col * summaryWidth; const boxY = 32 + row * 13;
-        pdf.setDrawColor(224, 205, 191); pdf.setFillColor(row ? 250 : 255, row ? 244 : 250, row ? 238 : 246);
-        pdf.rect(x, boxY, summaryWidth, 13, "FD");
-        pdf.setFont("helvetica", "normal"); pdf.setFontSize(6.8); pdf.setTextColor(120, 84, 65); pdf.text(label, x + 2, boxY + 4.2);
-        pdf.setFont("helvetica", "bold"); pdf.setFontSize(9); pdf.setTextColor(55, 37, 29); pdf.text(`Rs. ${Number(value).toLocaleString("en-IN")}`, x + 2, boxY + 9.8);
-      });
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(7.5); pdf.setTextColor(80, 54, 42);
-      pdf.text(`Combined ledger: Received Rs. ${auditReceived.toLocaleString("en-IN")}  |  Spent Rs. ${auditSpent.toLocaleString("en-IN")}  |  Balance Rs. ${(auditReceived - auditSpent).toLocaleString("en-IN")}  |  Pending Rs. ${auditPending.toLocaleString("en-IN")}`, margin, 61);
-      pdf.setFontSize(8); pdf.setTextColor(255, 255, 255); pdf.setFillColor(74, 48, 36);
-      pdf.rect(margin, 64, pageWidth - margin * 2, 8, "F");
-      ["No.", "Building / Flat", report === "expenses" ? "Expense purpose" : "Resident / Contributor", "Amount", "Mode", "Date", "Remarks"].forEach((label, index) => pdf.text(label, columns[index] + 1.5, 69.2));
-      pdf.setTextColor(50, 36, 28); y = 74;
-    };
-
-    const addPage = () => { if (page > 0) pdf.addPage(); page += 1; drawHeader(); };
-    page = 0; addPage();
-
-    for (const building of ["A", "B"]) {
-      reportBuilding = building;
-      if (building === "B") addPage();
-      const buildingRows = auditRows.filter((item) => item.wing === building);
-      buildingRows.forEach((item, index) => {
-      pdf.setFont("helvetica", "normal"); pdf.setFontSize(7.5);
-      const isExpense = item.type === "outgoing";
-      const values = [String(index + 1), isExpense ? `${item.wing} Expense` : (item.anonymous ? `${item.wing} Anonymous` : `${item.wing} - Flat ${item.flat || "-"}`), isExpense ? (item.purpose || "Expense") : (item.name || "Anonymous"), `${isExpense ? "-" : "+"} Rs. ${(Number(item.amount) || 0).toLocaleString("en-IN")}`, item.mode || "-", item.date || "-", item.remarks || "-"];
-      const lines = values.map((value, col) => pdf.splitTextToSize(String(value), widths[col] - 3));
-      const rowHeight = Math.max(8, ...lines.map((line) => line.length * 3.4 + 3));
-      if (y + rowHeight > 279) addPage();
-      pdf.setDrawColor(224, 211, 201); pdf.setFillColor(index % 2 ? 252 : 255, index % 2 ? 248 : 255, index % 2 ? 244 : 255);
-      pdf.rect(margin, y, pageWidth - margin * 2, rowHeight, "FD");
-      lines.forEach((line, col) => pdf.text(line, columns[col] + 1.5, y + 4.7));
-      y += rowHeight;
-    });
-
-    if (y + 12 > 279) addPage();
-      pdf.setFont("helvetica", "bold"); pdf.setFontSize(10);
-      const buildingTotal = buildingRows.reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-      pdf.text(`Building ${building} total: Rs. ${buildingTotal.toLocaleString("en-IN")}`, margin, y + 8);
-      if (!buildingRows.length) { pdf.setFontSize(8); pdf.text("No records for this building.", margin, y + 14); }
-    }
-    const pages = pdf.getNumberOfPages();
-    for (let i = 1; i <= pages; i += 1) {
-      pdf.setPage(i); pdf.setFontSize(7); pdf.setTextColor(120, 95, 82);
-      pdf.text(`Private admin audit - Created by Rushikesh Ghatol, A-1302`, margin, 291);
-      pdf.text(`Page ${i} of ${pages}`, pageWidth - margin, 291, { align: "right" });
-    }
-    pdf.save(report === "expenses" ? "Breeza_Ganpati_2026_Expenses.pdf" : "Breeza_Ganpati_2026_Collections_Audit.pdf");
+    createAuditPdf(auditEntries, report).save(report === "expenses" ? "Breeza_Ganpati_2026_Expenses.pdf" : "Breeza_Ganpati_2026_Audit.pdf");
   }
 
   function downloadPendingOwnersPdf() {
@@ -464,7 +383,7 @@ export default function App() {
     </header>
     <section className={`content ${view === "reviews" ? "review-mode" : ""} ${view === "owners" ? "owners-mode" : ""} ${view === "contributions" ? "contributions-mode" : ""} ${isAdmin && view === "ledger" ? "admin-expenses-mode" : ""}`}>
       <div className="wing-switch">{["A","B"].map((item) => <button key={item} className={wing === item ? "active" : ""} onClick={() => { setWing(item); setForm(emptyForm); }}>Building {item}</button>)}</div>
-      {isAdmin ? <div className="admin-banner"><span>Admin view · Financial details unlocked</span><div className="admin-exports"><button onClick={() => downloadAuditPdf("collections")} disabled={!auditReady}>{auditReady ? "Collections PDF" : "Loading audit..."}</button><button onClick={() => downloadAuditPdf("expenses")} disabled={!auditReady}>Expenses PDF</button><button onClick={() => { if (isAdmin && auditReady) downloadAuditExcel(auditEntries); }} disabled={!auditReady}>Audit Excel</button><button onClick={downloadPendingOwnersPdf}>↓ Pending owners</button></div></div> : <div className="privacy-note"><span>🔒</span><div><strong>Personal contributions are private</strong><p>Only combined society totals are public.</p></div></div>}
+      {isAdmin ? <div className="admin-banner"><span>Admin view · Financial details unlocked</span><div className="admin-exports"><button onClick={() => downloadAuditPdf("audit")} disabled={!auditReady}>{auditReady ? "Audit PDF" : "Loading audit..."}</button><button onClick={() => downloadAuditPdf("expenses")} disabled={!auditReady}>Expenses PDF</button><button onClick={downloadPendingOwnersPdf}>↓ Pending owners</button></div></div> : <div className="privacy-note"><span>🔒</span><div><strong>Personal contributions are private</strong><p>Only combined society totals are public.</p></div></div>}
       <div className="combined-label">Combined society totals · Building A + B</div><div className="money-grid public-totals"><div className="money-card received"><span>Received</span><strong>{money.format(Number(publicSummary.received) || 0)}</strong><button className="tile-view" onClick={() => isAdmin ? setView("owners") : setShowLogin(true)}>View</button></div><div className="money-card spent"><span>Spent</span><strong>{money.format(Number(publicSummary.spent) || 0)}</strong><button className="tile-view" onClick={() => setView("ledger")}>View expenses</button></div><div className="money-card balance"><span>Remaining amount</span><strong>{money.format(Number(publicSummary.balance) || 0)}</strong><small>Received ? Spent</small></div><div className="money-card pending-total"><span>Pending review</span><strong>{money.format(Number(publicSummary.pendingReview) || 0)}</strong><button className="tile-view" onClick={() => isAdmin ? setView("reviews") : setShowLogin(true)}>{isAdmin ? `Review Building ${wing}` : "View"}</button></div></div>
       <div className="section-balances"><div><span>Building A received</span><strong>{money.format(wingSummaries.A.received)}</strong></div><div><span>Building B received</span><strong>{money.format(wingSummaries.B.received)}</strong></div><div className="combined"><span>Combined A + B received</span><strong>{money.format(wingSummaries.A.received + wingSummaries.B.received)}</strong></div></div>
       {!isAdmin && <button className="anonymous-contribution" onClick={startAnonymousContribution}><span>Anonymous contribution</span><small>Contribute without displaying your name or flat</small></button>}
